@@ -1,0 +1,6 @@
+ipsgopen INV .
+  inv inv1(S:Sys, PMS:Pms) .
+  inv inv2(S:Sys, PMS:Pms) .
+  inv inv3(S:Sys, PMS:Pms) .
+  generate inv1(S:Sys, PMS:Pms) induction on S:Sys .
+close

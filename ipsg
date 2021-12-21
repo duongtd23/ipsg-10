@@ -1,0 +1,21 @@
+#!/bin/sh
+TEMP1=$(mktemp)
+TEMP2=$(mktemp)
+BASE='/Users/duongtd/projects/ipsg'
+# TEMP1=temp1.cafe
+# TEMP2=temp2.cafe
+IPSG=$BASE/ipsg.maude
+MAUDE=/Users/duongtd/tools/maude-3.1/maude.darwin64
+PARSER=$BASE/preprocessing.sh
+rm -f $TEMP1
+rm -f $TEMP2
+for (( i=1; i<=$#; i++ ))
+do
+   eval arg=\$$i
+   cat $arg >> $TEMP1
+   echo "" >> $TEMP1
+done
+$PARSER $TEMP1 $TEMP2
+$MAUDE $IPSG $TEMP2
+rm -f $TEMP1
+rm -f $TEMP2

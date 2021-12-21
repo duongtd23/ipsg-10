@@ -1,0 +1,213 @@
+in cafeinmaude3/cafeOBJ2maude.maude
+in ipsg_core.maude
+
+***(
+  main module, base on LOOP module in Full Maude
+  after receiving the specification, the module calls to parse input,
+  pre-processing the specification, and process to generate proof scores.
+)
+mod IPSG is
+  ex LOOP-PRE-PROCESSING .
+  pr META-CAFE2MAUDE-SIGNATURE .
+  pr CAFE2MAUDE-DATABASE-HANDLING .
+  pr IPSG-HANDLE .
+  pr INPUT-IPSG-PARSE .
+
+  subsort Object < State .
+  op o : -> Oid .
+
+  var  H : Header .
+  var  O : Oid .
+  var  X@Database : CafeDatabaseClass .
+  vars Q Q' QI Q1 Q2 Q3 Q4 Q5 : Qid .
+  vars QIL QIL' QIL'' : QidList .
+  var  TL : TermList .
+  var  DB : Database .
+  var  Atts : AttributeSet .
+  var  S : State .
+  vars T1 T2 T3 : Term .
+  vars IS : IPSGState .
+  vars INSP2 INSP1 : IPSGInputSpec .
+  vars MS1 MS2 : IPSGModuleSpec .
+  vars PRSCS1 PRSCS2 : IPSGProofScores .
+  vars DB1 : Database .
+
+  op ipsg-init : -> System .
+
+  op ipsgState :_ : IPSGState -> Attribute [ctor] .
+
+  rl [init] :
+     ipsg-init
+  => [nil, < o : CafeDatabase | db : initialDatabase, input : nilTermList,
+                                output : ('\n '\t '\b 'IPSG '1.0 '
+                                          '`( 'June '`, '2020 '`)
+                                          '\o ' 'started. '\n),
+                                default : 'CONVERSION, 
+                                ipsgState : IPSGState-init,
+                                initCafeAttS >,
+                                nil] .
+
+***(
+  rule parse the input file for IPSG
+)
+  crl [ipsg-spec-parse] :
+    [('ipsgopen QIL'' 'close) QIL,
+      < O : X@Database | input : nilTermList, output : nil, ipsgState : IPSGState-init, Atts >,
+      QIL']
+    =>
+    if T:ResultPair? :: ResultPair then
+      [QIL,
+        < O : X@Database | input : nilTermList, output : nil, 
+          ipsgState : 
+            < parseInputSpec(getTerm(T:ResultPair?)) ;
+                null ; null >,
+          Atts >,
+        QIL']
+    else 
+      [QIL,
+        < O : X@Database | input : nilTermList, 
+          output : ('\r 'ERROR: 'No 'parse 'for 'ipsgopen-close), 
+          ipsgState : IPSGState-init,
+          Atts >,
+        QIL']
+    fi 
+  if T:ResultPair? := metaParse(upModule('INPUT-IPSG-SYNTAX, false), 
+        ('ipsgopen QIL'' 'close),
+        'InputModule) .
+
+***(
+  Rule parse CafeOBJ specification, using CafeInMaude
+)
+  crl [cafe-syntax-parse] :
+     [QI QIL, < O : X@Database | input : nilTermList, output : nil, Atts >, QIL' ]
+  => if RP:ResultPair? :: ResultPair
+     then [nil,
+           < O : X@Database | input : getTerm(RP:ResultPair?),
+                              output : nil, Atts >,
+          QIL']
+     else [nil,
+           < O : X@Database | input : nilTermList,
+                              output : ('\r 'WARNING: '\o printSyntaxError(
+                                        RP:ResultPair?, QI QIL) '\n
+                                        'ERROR: 'No 'parse 'for 'input.), Atts >,
+           QIL' ]
+     fi
+    if RP:ResultPair? := metaParse(CafeGRAMMAR, QI QIL, '@Input@) .
+
+***(
+  the first processing
+)
+  crl [proc1] :
+    [nil,
+      < O : X@Database |
+        db : DB1,
+        --- output : nil,
+        ipsgState : < INSP1 ; null ; null >,
+        Atts
+      >,
+    nil] =>
+    [nil,
+      < O : X@Database |
+        db : DB1,
+        --- output : nil,
+        ipsgState : < INSP1 ; modSpec(getFlatModule(getInputSpecMod(INSP1),DB1)) ; null >,
+        Atts
+      >,
+      nil ]
+  if INSP1 =/= null .
+
+***(
+  the second processing
+)
+  crl [proc2] :
+    [nil, 
+      < O : X@Database | 
+        ipsgState : < INSP1 ; MS1 ; null >, 
+        Atts
+      >, 
+    nil] => 
+    [nil, 
+      < O : X@Database | 
+        ipsgState : < INSP1 ; MS1 ; prscs(genPrsc(INSP1, MS1)) >,
+        Atts
+      >,
+    nil ] 
+  if INSP1 =/= null /\ MS1 =/= null .
+
+***(
+  Write proof scores
+)
+  crl [export_nil] :
+    [nil, 
+      < O : X@Database | 
+        output : nil,
+        ipsgState : < INSP1 ; MS1 ; prscs(nil) >, 
+        Atts
+      >, 
+    nil] => 
+    [nil, 
+      < O : X@Database | 
+        output : ('empty 'result ),
+        ipsgState : < INSP1 ; MS1 ; prscs(nil)  >,
+        Atts
+      >,
+    nil] 
+  if INSP1 =/= null /\ MS1 =/= null .
+
+  crl [export] :
+    [nil, 
+      < O : X@Database | 
+        output : nil,
+        ipsgState : < INSP1 ; MS1 ; PRSCS1 >, 
+        Atts
+      >, 
+    nil] => 
+    [nil, 
+      < O : X@Database | 
+        output : (toOpenCloseQidList2(getInputSpecMod(INSP1), 
+          getPrscList(PRSCS1), getSpecModule(MS1))),
+        ipsgState : < INSP1 ; MS1 ; PRSCS1 >,
+        Atts
+      >,
+    nil] 
+  if INSP1 =/= null /\ MS1 =/= null /\
+      PRSCS1 =/= null /\
+      PRSCS1 =/= prscs(nil) .
+
+***(
+  print to terminal
+)
+  rl [output] :
+     [nil, < O : X@Database | output : (QI QIL'), ipsgState : IS, Atts >, QIL'']
+  => [nil, < O : X@Database | output : nil, ipsgState : IS, Atts >, (QI QIL' QIL'')] 
+     .
+endm
+
+--- load model-checker.maude
+
+--- set print conceal on .
+--- select FULL-MAUDE .
+
+--- print conceal mod_is_sorts_._____endm .
+--- print conceal fmod_is_sorts_.____endfm .
+--- print conceal db .
+
+
+*** trace exclude CAFE2MAUDE .
+set show loop stats off .
+set show loop timing off .
+--- set trace on .
+
+*** for debugging purposes
+set print attribute on .
+
+set show advisories off .
+
+
+
+select IPSG .
+
+loop ipsg-init .
+
+*** 3TUPLE now available in Full Maude with different syntax
+load cafeinmaude/predefined.maude

@@ -1,8 +1,0 @@
-ipsgopen INV .
-  inv inv1(S:Sys, PMSI:PmsInfo) .
-  inv inv2(S:Sys, PMSI:PmsInfo) .
-  inv inv3(S:Sys, PMSI:PmsInfo) .
-  generate inv1(S:Sys, PMSI:PmsInfo) induction on S:Sys .
-  generate inv2(S:Sys, PMSI:PmsInfo) induction on S:Sys .
-  generate inv3(S:Sys, PMSI:PmsInfo) induction on S:Sys .
-close
