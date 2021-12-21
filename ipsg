@@ -1,11 +1,12 @@
 #!/bin/sh
+# config $BASE and $MAUDE properly before running the tool
 TEMP1=$(mktemp)
 TEMP2=$(mktemp)
-BASE='/Users/duongtd/projects/ipsg'
+BASE='ipsg'
 # TEMP1=temp1.cafe
 # TEMP2=temp2.cafe
 IPSG=$BASE/ipsg.maude
-MAUDE=/Users/duongtd/tools/maude-3.1/maude.darwin64
+MAUDE=maude.darwin64
 PARSER=$BASE/preprocessing.sh
 rm -f $TEMP1
 rm -f $TEMP2
