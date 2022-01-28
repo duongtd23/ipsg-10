@@ -1,32 +1,26 @@
-load cafeinmaudealpha/full-maude_lite.maude
+load full-maude_lite.maude
 load file.maude
-load cafeinmaudealpha/cimpg_defs.maude
+load cimpg_defs.maude
 load metaInterpreter.maude
-load cafeinmaudealpha/citp_aux.maude
-load cafeinmaudealpha/aux-modules.maude
-load cafeinmaudealpha/search_predicate.maude
-load cafeinmaudealpha/predefined.maude
-load cafeinmaudealpha/predefined_core.maude
-load cafeinmaudealpha/preparsing.maude
-load ipsg_grammar.maude
-load cafeinmaudealpha/parameter_config.maude
-load cafeinmaudealpha/cimpg_defs.maude
-load cafeinmaudealpha/module_parser.maude
-load cafeinmaudealpha/open_close_parsing.maude
-load cafeinmaudealpha/command_parsing.maude
-load cafeinmaudealpha/io.maude
-load time.maude
-load ipsg_core
+load citp_aux.maude
+load aux-modules.maude
+load search_predicate.maude
+load predefined.maude
+load predefined_core.maude
+load preparsing.maude
+load grammar.maude
+load parameter_config.maude
+load cimpg_defs.maude
+load module_parser.maude
+load open_close_parsing.maude
+load command_parsing.maude
+load io.maude
 
 mod MTP is
  pr (MAYBE * (op maybe to null)){Oid} .
  pr META-CIM-SIGN .
  pr PREPARSING .
  pr CIMPA-IO .
- pr TIME .
- pr IPSG-GRAMMAR .
-  pr IPSG-HANDLE .
-  pr INPUT-IPSG-PARSE .
 
  vars M M' M'' TOP FLAT FROM TO CURR : Module .
  vars TSM TSM' HSM HSM' MS : TheorySortMap .
@@ -50,7 +44,7 @@ mod MTP is
  var  H : Header .
  var  Ty : Type .
  var  V : View .
- vars N N2 N3 : Nat .
+ var  N : Nat .
  var  Q : Qid .
  *** For testing
  var CPR : [CafeParseResult] .
@@ -378,7 +372,7 @@ mod MTP is
      < cafeInMaude : CIM | out: Read, state: parseTextFileContents, input: IN, AtS >
   => < cafeInMaude : CIM | out: "", state: executeComm, input: (TL, IN), AtS >
   if QIL := tokenize(Read) /\
-     {T, Ty} := metaParse(IPSGGRAMMAR, QIL, '@Input@) /\
+     {T, Ty} := metaParse(GRAMMAR, QIL, '@Input@) /\
      TL := extractTerms(T) .
 
  crl [textFileNoParse] :
@@ -386,14 +380,14 @@ mod MTP is
   => < cafeInMaude : CIM | out: "", state: print&idle, AtS >
      write(stdout, cafeInMaude, "No parse for file.\n")
   if QIL := tokenize(Read) /\
-     noParse(N) := metaParse(IPSGGRAMMAR, QIL, '@Input@) .
+     noParse(N) := metaParse(GRAMMAR, QIL, '@Input@) .
 
  *** TODO
  crl [parseTextFileAmbiguous] :
      < cafeInMaude : CIM | out: Read, state: parseTextFileContents, AtS >
   => < cafeInMaude : CIM | out: "", AtS >
   if QIL := tokenize(Read) /\
-     RP?:[ResultPair] := metaParse(IPSGGRAMMAR, QIL, '@Input@) [print RP?:[ResultPair]] .
+     RP?:[ResultPair] := metaParse(GRAMMAR, QIL, '@Input@) [print RP?:[ResultPair]] .
 
  ***                           ***
  ***          NO COMM          ***
@@ -401,7 +395,7 @@ mod MTP is
  rl [emptyCommList] :
     < cafeInMaude : CIM | state: executeComm, input: empty, AtS >
  => < cafeInMaude : CIM | state: idle, input: empty, AtS >
-    getLine(stdin, cafeInMaude, "IPSG> ") .
+    getLine(stdin, cafeInMaude, "CafeInMaude> ") .
 
  ***                                    ***
  ***          PRINT & CONTINUE          ***
@@ -411,7 +405,7 @@ mod MTP is
     wrote(cafeInMaude, stdout)
     < cafeInMaude : CIM | state: print&idle, AtS >
  => < cafeInMaude : CIM | state: idle, AtS >
-    getLine(stdin, cafeInMaude, "IPSG> ") .
+    getLine(stdin, cafeInMaude, "CafeInMaude> ") .
 
  rl [print&idle] : wrote(cafeInMaude, stdout)
     < cafeInMaude : CIM | state: write&parsingModule, AtS >
@@ -423,72 +417,8 @@ mod MTP is
  op run : -> Configuration [ctor] .
  eq run =
     <> < cafeInMaude : CIM | initAtS, uload: umod, file: null, out: "",
-                             preparsed: mtRDB, initParsing-AtS, initCiMPA-AtS,
-                             ipsgState: < null ; null ; null >,
-                             ipsgStartTime: 0 >
+                             preparsed: mtRDB, initParsing-AtS, initCiMPA-AtS >
     createInterpreter(interpreterManager, cafeInMaude, none) .
-
-****************
-****************
-*** IPSG
-
-  op ipsgState:_ : IPSGState -> Attribute [ctor] .
-  op ipsgStartTime:_ : Nat -> Attribute [ctor] .
-  ops ipsgexe ipsgfin : -> State [ctor] .
-
-  vars INSP2 INSP1 : IPSGInputSpec .
-  vars MS1 MS2 : IPSGModuleSpec .
-  vars PRSCS1 PRSCS2 : IPSGProofScores .
-
-  rl [ipsg-start] :
-     < cafeInMaude : CIM | state: executeComm,
-      input: ('ipsgopen_._close['token[T1], T2], TL), 
-      ipsgState: < null ; null ; null >, ipsgStartTime: 0, AtS >
-  => < cafeInMaude : CIM | state: ipsgexe, 
-      input: ('ipsgopen_._close['token[T1], T2], TL), 
-      ipsgState: < null ; null ; null >, ipsgStartTime: 0, AtS >
-    getTimeSinceEpoch(timeManager, cafeInMaude) .
-
-  crl [ipsg-spec-parse] :
-     gotTimeSinceEpoch(cafeInMaude, O2:Oid, N)
-     < cafeInMaude : CIM | state: ipsgexe, mi: MI,
-      input: ('ipsgopen_._close['token[T1], T2], TL), 
-      ipsgState: < null ; null ; null >, ipsgStartTime: 0, AtS >
-  => < cafeInMaude : CIM | state: ipsgexe, mi: MI, input: TL, 
-      ipsgState: < INSP1 ; null ; null >, ipsgStartTime: N, AtS >
-    showModule(MI, cafeInMaude, getInputSpecMod(INSP1), true)
-  if INSP1 := parseInputSpec('ipsgopen_._close['token[T1], T2]) .
-
-  crl [ipsg-proc1] :
-     showingModule(cafeInMaude, MI, M)
-     < cafeInMaude : CIM | state: ipsgexe, mi: MI, 
-      ipsgState: < INSP1 ; null ; null >, AtS >
-  => < cafeInMaude : CIM | state: ipsgexe, mi: MI,
-      ipsgState: < INSP1 ; MS1 ; prscs(genPrsc(INSP1, MS1)) >, AtS >
-  if INSP1 =/= null /\
-    MS1 := modSpec(M) .
-
-  crl [ipsg-export] :
-     < cafeInMaude : CIM | state: ipsgexe, proof: Text,
-      ipsgState: < INSP1 ; MS1 ; PRSCS1 >, AtS >
-  => < cafeInMaude : CIM | state: ipsgfin, proof: S,
-      ipsgState: < INSP1 ; MS1 ; PRSCS1 >, AtS >
-    getTimeSinceEpoch(timeManager, cafeInMaude)
-  if INSP1 =/= null /\ MS1 =/= null /\ PRSCS1 =/= null /\
-    S := toOpenCloseStr(getInputSpecMod(INSP1), 
-              getPrscList(PRSCS1), getSpecModule(MS1)) .
-
-  crl [ipsg-write] :
-     gotTimeSinceEpoch(cafeInMaude, O2:Oid, N2)
-     < cafeInMaude : CIM | state: ipsgfin, proof: S,
-      ipsgState: < INSP1 ; MS1 ; PRSCS1 >, ipsgStartTime: N, AtS >
-  => < cafeInMaude : CIM | state: executeComm, 
-      proof: (S + "--> Time taken is " + string(N3, 10) + "ms"),
-      ipsgState: < INSP1 ; MS1 ; PRSCS1 >, ipsgStartTime: 0, AtS >
-  if INSP1 =/= null /\ MS1 =/= null /\ PRSCS1 =/= null /\
-    S =/= "" /\
-    N3 := (N2 + (- N)) quo 1000000 .
-
 endm
 
 set print conceal on .
@@ -502,3 +432,5 @@ set print attribute on .
 set show advisories off .
 
 erew run .
+
+*** maude -allow-files cafeInMaude.maude

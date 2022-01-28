@@ -18,17 +18,19 @@ fmod LIST-UTILS is
   vars TELIST TELIST1 TELIST2 : TermList .
 
   eq checkIncluded(empty, TE) = false .
-  eq checkIncluded((TE1 , TELIST), TE1) = true .
-  eq checkIncluded((TE1 , TELIST), TE2) = checkIncluded(TELIST, TE2) [owise] .
+  eq checkIncluded((TE1 , TELIST), TE2) = 
+    if TE1 == TE2 
+    then true
+    else checkIncluded(TELIST, TE2) 
+    fi .
 
   eq appendList(TELIST, empty) = TELIST .
   eq appendList(empty, TELIST) = TELIST .
   eq appendList(TELIST, (TE , TELIST1)) =
-      if checkIncluded(TELIST, TE) then
-          appendList(TELIST, TELIST1)
-      else
-          appendList((TELIST , TE), TELIST1)
-      fi .
+    if checkIncluded(TELIST, TE) 
+    then appendList(TELIST, TELIST1)
+    else appendList((TELIST , TE), TELIST1)
+    fi [owise] .
 
   eq headTL((TE , TELIST)) = TE .
   eq headTL(TE) = TE .
@@ -299,7 +301,7 @@ fmod TO-QID-LIST is
     else
       if noOccurences(string(Q1), "_") == size-TL(TEL1) then
         if find(string(Q1), "_", 0) == 0 then
-          ' '`( replaceEqWithUnderSc(string(Q1), TEL1, MOD1) '`) ' 
+          '`( replaceEqWithUnderSc(string(Q1), TEL1, MOD1) '`) ' 
         else
           replaceEqWithUnderSc(string(Q1), TEL1, MOD1)
         fi
@@ -365,6 +367,177 @@ fmod TO-QID-LIST is
   op aEq2QidListRaw : Equation Module -> QidList .
   eq aEq2QidListRaw(eq T1 = T2 [none] ., MOD1) =
     'eq myDownTerm(T1, MOD1) '= myDownTerm(T2, MOD1) '. .
+
+  
+*********
+  op mod2OpenCloseStr : Qid Module Module MapNatEquation String -> String .
+  eq mod2OpenCloseStr(Q1, fmod Q is IL sorts SS . SSDS OPDS MAS EQS endfm, MOD1, MAP1, STR1) 
+    = "open " + string1(Q1) + " ." +
+        --- importList2QidList(IL)
+        sortSetDecl2Str(SS) + 
+        subSortsDecl2Str(SSDS) +
+        ops2Str(OPDS) +
+        mas2Str(MAS) +
+        --- eqs2QidList(EQS, MOD1) '\n
+        mapEqs2Str(MAP1, MOD1) + "\n" +
+        STR1 + 
+      "\nclose" .
+
+  op sortSetDecl2Str : SortSet -> String .
+  eq sortSetDecl2Str(none) = "" .
+  eq sortSetDecl2Str(Q1) = "\n\tsorts " + string1(Q1) + " ." .
+
+  op subSortsDecl2Str : SubsortDeclSet -> String .
+  eq subSortsDecl2Str(none) = "" .
+
+  op ops2Str : OpDeclSet -> String .
+  eq ops2Str(none) = "" .
+  eq ops2Str(op Q1 : nil -> Q2 [none] . OPDS) = 
+    "\n\top " + string1(Q1) + " : -> " + string1(Q2) + " ." +
+    ops2Str(OPDS) .
+
+  op mas2Str : MembAxSet -> String .
+  eq mas2Str(none) = "" .
+
+  --- op eqs2QidList : EquationSet Module -> QidList .
+  --- eq eqs2QidList(none, MOD1) = (nil).QidList .
+  --- eq eqs2QidList(eq T1 = T2 [none] . EQS, MOD1) = 
+  ---   aEq2Str(myDownTerm(T1, MOD1), myDownTerm(T2, MOD1), MOD1)
+  ---   eqs2QidList(EQS, MOD1) .
+
+  op mapEqs2Str : MapNatEquation Module -> String .
+  op do-mapEqs2Str : MapNatEquation Module Nat -> String .
+  op do-mapEqs2Str2 : Equation Module -> String .
+  eq mapEqs2Str(MAP1, MOD1) = do-mapEqs2Str(MAP1, MOD1, 1) .
+  eq do-mapEqs2Str(MAP1, MOD1, N1) = 
+    if MAP1[N1] == undefined 
+    then ""
+    else do-mapEqs2Str2(MAP1[N1], MOD1) + do-mapEqs2Str(MAP1, MOD1, s(N1))
+    fi .
+  eq do-mapEqs2Str2(eq T1 = T2 [none] ., MOD1) = 
+    aEq2Str(myDownTermStr(T1, MOD1), myDownTermStr(T2, MOD1), MOD1) .
+
+  op aEq2Str : String String Module -> String .
+  eq aEq2Str(STR1, STR2, MOD1) =
+    "\n\teq " + STR1 + " = " + STR2 + " ." .
+
+
+  op myDownTermStr : Term Module -> String .
+  op myDownTermLStr : TermList Module -> String .
+  --- eq myDownTermLStr(empty, MOD1) = "" .
+  eq myDownTermLStr(T1, MOD1) = myDownTermStr(T1, MOD1) .
+  ceq myDownTermLStr((T1 , TEL1), MOD1) = 
+    myDownTermStr(T1, MOD1) + ", " + myDownTermLStr(TEL1, MOD1) 
+  if TEL1 =/= empty .
+
+  eq myDownTermStr(C1, MOD1) = string(getName(C1)) .
+  eq myDownTermStr(V1, MOD1) = string(getName(V1)) .
+  ceq myDownTermStr(Q1[TEL1], MOD1) = 
+    if find(STR1, "_", 0) == notFound 
+    then replaceEqWithoutUnderScStr(STR1, TEL1, MOD1)
+    else
+      if noOccurences(STR1, "_") == size-TL(TEL1) 
+      then
+        if find(STR1, "_", 0) == 0 
+        then "(" + replaceEqWithUnderScStr(STR1, TEL1, MOD1) + ")" 
+        else replaceEqWithUnderScStr(STR1, TEL1, MOD1)
+        fi
+      else handleDownTermACStr(TEL1,MOD1,substr(STR1,1,sd(length(STR1),2)))
+      fi
+    fi 
+  if STR1 := replace(string(Q1)) .
+
+  op replaceEqWithoutUnderScStr : String TermList Module -> String .
+  eq replaceEqWithoutUnderScStr(STR1, TEL1, MOD1) = 
+    STR1 + "(" + myDownTermLStr(TEL1, MOD1) + ")" .
+
+  op replaceEqWithUnderScStr : String TermList Module -> String .
+  eq replaceEqWithUnderScStr("", TEL1, MOD1) = "" .
+  eq replaceEqWithUnderScStr(STR1, TEL1, MOD1) =
+    if find(STR1, "_", 0) == notFound 
+    then STR1
+    else 
+      if find(STR1, "_", 0) == 0 
+      then myDownTermStr(headTL(TEL1), MOD1) +
+          replaceEqWithUnderScStr(substr(STR1, 1, sd(length(STR1),1)), 
+              removeHeadTL(TEL1), MOD1)
+      else " " + substr(STR1, 0, find(STR1, "_", 0)) + " " +
+          replaceEqWithUnderScStr(substr(STR1, find(STR1, "_", 0), 
+            sd(length(STR1), find(STR1, "_", 0))), TEL1, MOD1)
+      fi
+    fi .
+
+  op handleDownTermACStr : TermList Module String -> String .
+  eq handleDownTermACStr((empty).TermList, MOD1, STR2) = "" .
+  eq handleDownTermACStr((T1 , TEL1), MOD1, STR2) =
+    "(" + myDownTermStr(T1, MOD1) + 
+      handleDownTermAC1Str(TEL1, MOD1, STR2) + ")" .
+  
+  op handleDownTermAC1Str : TermList Module String -> String .
+  eq handleDownTermAC1Str((empty).TermList, MOD1, STR2) = "" .
+  eq handleDownTermAC1Str((T1 , TEL1), MOD1, STR2) =
+    STR2 + myDownTermStr(T1, MOD1) +
+      handleDownTermAC1Str(TEL1, MOD1, STR2) .
+
+
+  op qidList2Str : QidList -> String .
+  eq qidList2Str(nil) = "" .
+  eq qidList2Str(Q1 ' QL) = string1(Q1) + qidList2Str(QL) .
+  eq qidList2Str(Q1 '`( QL) = string1(Q1) + "(" + qidList2Str(QL) .
+  eq qidList2Str(Q1 '`) QL) = string1(Q1) + ")" + qidList2Str(QL) .
+  eq qidList2Str(Q1 '`, QL) = string1(Q1) + ", " + qidList2Str(QL) .
+  eq qidList2Str(Q1 QL) = string1(Q1) + " " + qidList2Str(QL) [owise] .
+
+  op string1 : Qid -> String .
+  eq string1((' )) = "" .
+  eq string1('`() = "(" .
+  eq string1('`)) = ")" .
+  eq string1('`,) = "," .
+  eq string1(Q1) = string(Q1) [owise] .
+
+--- remove "`", replace "`," -> "," 
+  op replace : String -> String .
+  ceq replace(STR1) = 
+    substr(STR1, 0, N1) + substr(STR1, N1 + 1, sd(length(STR1), N1 + 1))
+  if N1 := find(STR1, "`,", 0) .
+  ceq replace(STR1) = 
+    substr(STR1, 0, N1) + substr(STR1, N1 + 1, sd(length(STR1), N1 + 1))
+  if N1 := find(STR1, "`)", 0) .
+  ceq replace(STR1) = 
+    substr(STR1, 0, N1) + substr(STR1, N1 + 1, sd(length(STR1), N1 + 1))
+  if N1 := find(STR1, "`(", 0) .
+  eq replace(STR1) = STR1 [owise] .
+
+endfm
+
+fmod TERM-SET is
+  pr META-TERM .
+  sort TermSet .
+  subsort Term < TermSet .
+
+  op empTS : -> TermSet [ctor] .
+  op _$_ : TermSet TermSet -> TermSet [assoc comm id: empTS ctor] .
+  op _\in_ : Term TermSet -> Bool .
+  op insertTS : Term TermSet -> TermSet .
+  op appendTS : TermSet TermSet -> TermSet .
+  op termS2TermL : TermSet -> TermList .
+  
+  vars TE TE2 : Term .
+  vars TES TES2 : TermSet .
+  
+  --- eq TE \in empTS = false .
+  eq TE \in TE = true .
+  eq TE \in TE $ TES = true .
+  eq TE \in TES = false [owise] .
+  eq insertTS(TE, TE $ TES) = TE $ TES .
+  eq insertTS(TE, TES) = TE $ TES [owise] .
+  eq appendTS(empTS, TES2) = TES2 .
+  eq appendTS(TE, TES2) = insertTS(TE, TES2) .
+  eq appendTS(TE $ TES, TES2) = 
+    appendTS(TES, insertTS(TE, TES2)) .
+  eq termS2TermL(empTS) = (empty).TermList .
+  eq termS2TermL(TE) = TE .
+  eq termS2TermL(TE $ TES) = (TE , termS2TermL(TES)) .
 endfm
 
 ***(
@@ -374,6 +547,7 @@ endfm
 fmod MODULE-UTILS is
   pr META-LEVEL .
   pr CONVERSION .
+  pr TERM-SET .
 
   op copyModule&AddEqs : Module EquationSet -> Module .
   op copyModule&AddEqs2 : Module EquationSet Nat -> Module .
@@ -382,6 +556,8 @@ fmod MODULE-UTILS is
   vars MOD1 MOD2 : Module .
   vars EQS1 EQS2 : EquationSet .
   vars N1 N2 : Nat .
+  vars TE1 TE2 : Term .
+  vars ATTS : AttrSet .
 
   eq copyModule&AddEqs(MOD1, EQS1) = (
     fmod getName(MOD1) is 
@@ -405,6 +581,11 @@ fmod MODULE-UTILS is
           (getEqs(MOD1) EQS1)
     endfm .
 
+--- equation in proof score, there is no ceq 
+  op eqs2TermSet : EquationSet -> TermSet .
+  eq eqs2TermSet(none) = empTS .
+  eq eqs2TermSet((eq TE1 = TE2 [ ATTS ] .) EQS1) 
+    = insertTS(TE2, insertTS(TE1, eqs2TermSet(EQS1))) .
 endfm
 
 fmod TERM-ANALYSIS is 
@@ -421,7 +602,7 @@ fmod TERM-ANALYSIS is
   op max-node : -> Nat .
   eq max-node = 30000 .
   op max-node2 : -> Nat .
-  eq max-node2 = 40 .     --- normally 30, but need to change to 40 (NSLPK)
+  eq max-node2 = 20 .     --- normally 30, but need to change to 40 (NSLPK)
 
   op getMaxNodes : -> Nat .
   eq getMaxNodes = max-node .
@@ -464,12 +645,13 @@ fmod TERM-ANALYSIS is
   eq countNodes2(TE) = countNodes(TE) .
   eq countNodes2( (TE , TL) ) = countNodes(TE) + countNodes2(TL) .
 
-  eq isComplicated2(TE) = 
+  ceq isComplicated2(TE) = 
     if countNodes(TE) > getMaxNodes2 then
       true
     else
       false
-    fi .
+    fi 
+  if N := countNodes(TE) .
 
 endfm
 
@@ -533,5 +715,5 @@ fmod IPSG-CONFIG is
   Note that depth = 0 indicates that we do not try this case
 )
   op depthTryUseLm : -> Nat .
-  eq depthTryUseLm = 2 .
+  eq depthTryUseLm = 0 .
 endfm

@@ -764,58 +764,33 @@ mod! NETWORK {
 
 -- csign
   eq G \in csign(void) = false .
-  eq G \in csign(M) 
-    = (scertM?(M) and G = sign(getCert(M))) .
   eq G \in csign(M,NW) 
-    = (if G \in csign(M) then
-        true
-      else
-        G \in csign(NW)
-      fi) .
+    = (scertM?(M) and G = sign(getCert(M)))
+    or G \in csign(NW) .
 
 -- cecfin
   eq ECFIN \in cecfin(void) = false .
-  eq ECFIN \in cecfin(M) 
-    = (cfM?(M) and ECFIN = getCipher(M)) .
   eq ECFIN \in cecfin(M,NW) 
-    = (if ECFIN \in cecfin(M) then
-        true
-      else
-        ECFIN \in cecfin(NW)
-      fi) .
+    = (cfM?(M) and ECFIN = getCipher(M)) 
+    or ECFIN \in cecfin(NW) .
 
 -- cesfin
   eq ESFIN \in cesfin(void) = false .
-  eq ESFIN \in cesfin(M)
-    = (sfM?(M) and ESFIN = getCipher(M)) .
-  eq ESFIN \in cesfin(M,NW)
-    = (if ESFIN \in cesfin(M) then
-        true
-      else
-        ESFIN \in cesfin(NW)
-      fi) .
+  eq ESFIN \in cesfin(M, NW)
+    = (sfM?(M) and ESFIN = getCipher(M)) 
+    or ESFIN \in cesfin(NW) .
 
 -- cecfin2
   eq ECFIN2 \in cecfin2(void) = false .
-  eq ECFIN2 \in cecfin2(M) 
-    = (cf2M?(M) and ECFIN2 = getCipher(M)) .
-  eq ECFIN2 \in cecfin2(M,NW) 
-    = (if ECFIN2 \in cecfin2(M) then
-        true
-      else
-        ECFIN2 \in cecfin2(NW)
-      fi) .
+  eq ECFIN2 \in cecfin2(M, NW) 
+    = (cf2M?(M) and ECFIN2 = getCipher(M)) 
+    or ECFIN2 \in cecfin2(NW) .
 
 -- cesfin2
   eq ESFIN2 \in cesfin2(void) = false .
-  eq ESFIN2 \in cesfin2(M)
-    = (sf2M?(M) and ESFIN2 = getCipher(M)) .
-  eq ESFIN2 \in cesfin2(M,NW) 
-    = (if ESFIN2 \in cesfin2(M) then
-        true
-      else
-        ESFIN2 \in cesfin2(NW)
-      fi) . 
+  eq ESFIN2 \in cesfin2(M, NW)
+    = (sf2M?(M) and ESFIN2 = getCipher(M)) 
+    or ESFIN2 \in cesfin2(NW) .
 }
 
 mod! SESSION-STATE {
@@ -1120,7 +1095,7 @@ mod TLS12 {
 -- client hello 2
   op c-chello2 : Sys Prin Prin Rand Sid CipherSuites -> Bool
   eq c-chello2(S,A,B,R,I,CSs) = 
-    (not (R \in ur(S) and ss(S,A,B,I) = none) and
+    (not (R \in ur(S)) and not (ss(S,A,B,I) = none) and
      cs(ss(S,A,B,I)) \in CSs) .
   ceq nw(chello2(S,A,B,R,I,CSs)) =
       (ch2M(A,A,B,R,I,CSs) , nw(S)) 
@@ -1138,7 +1113,7 @@ mod TLS12 {
     Prin Prin Prin Rand Sid CipherSuites -> Bool
   eq c-shello2(S,R2,A2,A,B,R,I,CSs) = 
     (ch2M(A2,A,B,R,I,CSs) \in nw(S) and
-     not (R2 \in ur(S) and ss(S,A,B,I) = none) and
+     not (R2 \in ur(S)) and not (ss(S,A,B,I) = none) and
      cs(ss(S,A,B,I)) \in CSs) .
   ceq nw(shello2(S,R2,A2,A,B,R,I,CSs)) =
       (sh2M(B,B,A,R2,I,cs(ss(S,A,B,I))) , nw(S)) 
@@ -1438,6 +1413,7 @@ mod TLS12 {
   op shashkeyAb : Prin PriKeyEx Rand Rand -> Cipher
   eq shashkeyAb(B,K,R,R2) = encParams(priKey(B), R,R2,pubKeyEx(K,B)) .
 
+  -- eq existPriSKexM(PMS,nw(S)) = false .
 }
 
 mod INV {

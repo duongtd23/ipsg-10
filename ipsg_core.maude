@@ -104,7 +104,7 @@ fmod PARSE-TERM is
       (extractSplitCasesT(TE2) == empty or extractSplitCasesT(TE2) == TE2) then
       '_=_[TE1, TE2]
     else
-      appendList(extractSplitCasesT(TE1), extractSplitCasesTL(TE2)) 
+      appendList(extractSplitCasesT(TE1), extractSplitCasesT(TE2)) 
     fi .
   eq extractSplitCasesT(TE) = 
     if TE == 'true.Bool or TE == 'false.Bool then
@@ -157,47 +157,62 @@ fmod PARSE-TERM is
 
 ---
   eq extractSplitCasesT2(TE1) = doExtractSplitCasesTL2(TE1, empty) . 
-  eq doExtractSplitCasesT2('_xor_[TE1, TELIST], MTN1) = 
-    doExtractSplitCasesTL2(TELIST, doExtractSplitCasesT2(TE1, MTN1)) .
-  eq doExtractSplitCasesT2('_and_[TE1, TELIST], MTN1) = 
-    doExtractSplitCasesTL2(TELIST, doExtractSplitCasesT2(TE1, MTN1)) .
-  eq doExtractSplitCasesT2('_or_[TE1, TELIST], MTN1) = 
-    doExtractSplitCasesTL2(TELIST, doExtractSplitCasesT2(TE1, MTN1)) .
-  
-  eq doExtractSplitCasesT2('_=_['false.Bool, TE1], MTN1) = 
-    doExtractSplitCasesT2(TE1, MTN1) .
-  eq doExtractSplitCasesT2('_=_[TE1, 'false.Bool], MTN1) = 
-    doExtractSplitCasesT2(TE1, MTN1) .
+  ceq doExtractSplitCasesT2(TE1, MTN1) = MTN1
+    if TE1 == 'true.Bool or TE1 == 'false.Bool .
+  ceq doExtractSplitCasesT2(QI[TE1, TELIST], MTN1) = 
+      doExtractSplitCasesTL2(TELIST, doExtractSplitCasesT2(TE1, MTN1)) 
+    if QI == '_xor_ or
+      QI == '_and_ or
+      QI == '_or_ .
+  ceq doExtractSplitCasesT2('_=_[QI[TELIST], TE2], MTN1) = 
+      doExtractSplitCasesT2(TE2, doExtractSplitCasesT2(QI[TELIST], MTN1)) 
+    if QI == '_xor_ or
+      QI == '_and_ or
+      QI == '_or_ or
+      QI == '_=_ .
+  ceq doExtractSplitCasesT2('_=_[TE1, QI[TELIST]], MTN1) = 
+      doExtractSplitCasesT2(QI[TELIST], doExtractSplitCasesT2(TE1, MTN1)) 
+    if QI == '_xor_ or
+      QI == '_and_ or
+      QI == '_or_ or
+      QI == '_=_ .
 
-  eq doExtractSplitCasesT2('_=_[TE1, TE2], MTN1) = 
-    if doExtractSplitCasesT2(TE1, MTN1) == MTN1 and 
-      doExtractSplitCasesT2(TE2, MTN1) == MTN1 then
-      if MTN1['_=_[TE1, TE2]] :: Nat then
-        insert('_=_[TE1, TE2], MTN1['_=_[TE1, TE2]] + 1, MTN1)
-      else
-        insert('_=_[TE1, TE2], 1, MTN1)
-      fi
-    else
-      doExtractSplitCasesT2(TE2, doExtractSplitCasesT2(TE1, MTN1)) 
-    fi .
-  eq doExtractSplitCasesT2(TE1, MTN1) = MTN1 [owise] .
+  ceq doExtractSplitCasesT2('_=_[TE2, TE1], MTN1) = 
+      doExtractSplitCasesT2(TE1, MTN1) 
+    if TE2 == 'true.Bool or TE2 == 'false.Bool .
+  ceq doExtractSplitCasesT2('_=_[TE1, TE2], MTN1) = 
+      doExtractSplitCasesT2(TE1, MTN1) 
+    if TE2 == 'true.Bool or TE2 == 'false.Bool .
 
+  ceq doExtractSplitCasesT2('_=_[TE1, TE2], MTN1) = 
+    if doExtractSplitCasesT2(TE1, MTN1) == mapTNInsert(MTN1, TE1) and 
+      doExtractSplitCasesT2(TE2, MTN1) == mapTNInsert(MTN1, TE2) 
+    then mapTNInsert(MTN1, '_=_[TE1, TE2]) 
+    else doExtractSplitCasesT2(TE2, doExtractSplitCasesT2(TE1, MTN1)) 
+    fi 
+  if TE1 =/= 'true.Bool /\
+    TE1 =/= 'false.Bool /\
+    TE2 =/= 'true.Bool /\
+    TE2 =/= 'false.Bool .
+  eq doExtractSplitCasesT2(TE1, MTN1) = mapTNInsert(MTN1, TE1) [owise] .
 
   op chooseBestTerm : MapTermNat -> Term .
   op doChooseBestTerm : MapTermNat Term Nat -> Term .
-  eq chooseBestTerm(TE1 |-> N1) = TE1 .
+  --- eq chooseBestTerm(TE1 |-> N1) = TE1 .
   eq chooseBestTerm((TE1 |-> N1, MTN1)) = doChooseBestTerm(MTN1, TE1, N1) .
-  eq doChooseBestTerm(TE1 |-> N1, TE2, N2) = 
-    if N1 < N2 then
-      TE2
-    else
-      TE1
-    fi .
+  eq doChooseBestTerm(empty, TE2, N2) = TE2 .
   eq doChooseBestTerm((TE1 |-> N1, MTN1), TE2, N2) =
     if N1 < N2 then
       doChooseBestTerm(MTN1, TE2, N2)
     else
       doChooseBestTerm(MTN1, TE1, N1)
+    fi .
+
+  op mapTNInsert : MapTermNat Term -> MapTermNat .
+  eq mapTNInsert(MTN1, TE) =
+    if MTN1[TE] :: Nat
+    then insert(TE, MTN1[TE] + 1, MTN1)
+    else insert(TE, 1, MTN1)
     fi .
 endfm
 
@@ -210,6 +225,9 @@ fmod HANDLE-EQS-CS is
   pr LIST-UTILS .
   pr TERM-UTILS .
   pr TERM-ANALYSIS .
+
+  sort EqPair .
+  op $_,_$ : Equation Equation -> EqPair [ctor] .
 
   vars TE1 TE2 TE3 TE4 : Term .
   vars TL1 TL2 : TermList .
@@ -226,101 +244,65 @@ fmod HANDLE-EQS-CS is
   vars EQ1 EQ2 : Equation .
   vars ATTR1 ATTR2 : AttrSet .
 
-  op makeEqT : Term Module Module -> Equation .
-  op makeEqT2 : Term Module Module -> Equation .
-  op makeEqT3 : Term Module Module -> Equation .
-  --- eq makeEqT('_=_[TE1, 'true.Bool], MOD) = (eq TE1 = 'true.Bool [none] .) .
-  --- eq makeEqT('_=_['true.Bool, TE1], MOD) = (eq TE1 = 'true.Bool [none] .) .
-  --- eq makeEqT('_=_[TE1, 'false.Bool], MOD) = (eq TE1 = 'true.Bool [none] .) .
-  --- eq makeEqT('_=_['false.Bool, TE1], MOD) = (eq TE1 = 'true.Bool [none] .) .
-  eq makeEqT('_=_[TE1, TE2], MOD, PRSCMOD) = 
-    if TE1 == 'true.Bool or TE1 == 'false.Bool then
-      (eq TE2 = 'true.Bool [none] .)
-    else 
-      if TE2 == 'true.Bool or TE2 == 'false.Bool then
-        (eq TE1 = 'true.Bool [none] .)
-      else
-        makeEqT2('_=_[TE1, TE2], MOD, PRSCMOD)
-      fi
-    fi .
-  eq makeEqT(TE1, MOD, PRSCMOD) 
-    = (eq TE1 = 'true.Bool [none] .) [owise] .
-  --- ceq makeEqF('_=_[TE1, TE2], MOD) = (eq TE2 = TE1 [none] .)
-  ---   if isConstructorT(TE1, getOps(MOD), MOD) .
-  --- ceq makeEqF('_=_[TE1, TE2], MOD) = (eq TE1 = TE2 [none] .)
-  ---   if isConstructorT(TE2, getOps(MOD), MOD) .
-  eq makeEqT2('_=_[TE1, TE2], MOD, PRSCMOD) =
-    if isConstructorT(TE1, getOps(MOD), MOD) then
-      (eq TE2 = TE1 [none] .)
-    else
-      if isConstructorT(TE2, getOps(MOD), MOD) then
-        (eq TE1 = TE2 [none] .)
-      else
-        makeEqT3('_=_[TE1, TE2], MOD, PRSCMOD)
-      fi
-    fi .
-  eq makeEqT3('_=_[C1, C2], MOD, PRSCMOD) = handleMakeEqTCs(C1, C2, MOD, PRSCMOD) .
-  eq makeEqT3('_=_[TE1, C2], MOD, PRSCMOD) = (eq TE1 = C2 [none] .) .
-  eq makeEqT3('_=_[C1, TE2], MOD, PRSCMOD) = (eq TE2 = C1 [none] .) .
-  eq makeEqT3('_=_[TE1, TE2], MOD, PRSCMOD) = 
-    (if checkExist(TE1, TE2) then
-      (eq TE2 = TE1 [none] .) 
-    else 
-      --- (eq TE1 = TE2 [none] .) 
-      handleMakeEqTTs(TE1, TE2, MOD, PRSCMOD)
-    fi) .
-  eq makeEqT3(TE1, MOD, PRSCMOD) = (eq TE1 = 'true.Bool [none] .) [owise] .
+  op 1stEqT : EqPair -> Equation .
+  op 2ndEqT : EqPair -> Equation .
+  eq 1stEqT($ EQ1 , EQ2 $) = EQ1 .
+  eq 2ndEqT($ EQ1 , EQ2 $) = EQ2 .
 
-  op makeEqF : Term Module Module -> Equation .
-  op makeEqF2 : Term Module Module -> Equation .
-  op makeEqF3 : Term Module Module -> Equation .
-  --- eq makeEqF('_=_[TE1, 'true.Bool], MOD) = (eq TE1 = 'false.Bool [none] .) .
-  --- eq makeEqF('_=_['true.Bool, TE1], MOD) = (eq TE1 = 'false.Bool [none] .) .
-  --- eq makeEqF('_=_[TE1, 'false.Bool], MOD) = (eq TE1 = 'false.Bool [none] .) .
-  --- eq makeEqF('_=_['false.Bool, TE1], MOD) = (eq TE1 = 'false.Bool [none] .) .
-  eq makeEqF('_=_[TE1, TE2], MOD, PRSCMOD) = 
-    if TE1 == 'true.Bool or TE1 == 'false.Bool then
-      (eq TE2 = 'false.Bool [none] .)
-    else 
-      if TE2 == 'true.Bool or TE2 == 'false.Bool then
-        (eq TE1 = 'false.Bool [none] .)
-      else
-        makeEqF2('_=_[TE1, TE2], MOD, PRSCMOD)
-      fi
-    fi .
-  eq makeEqF(TE1, MOD, PRSCMOD) = (eq TE1 = 'false.Bool [none] .) [owise] .
-  --- ceq makeEqF('_=_[TE1, TE2], MOD) = (eq '_=_[TE2, TE1] = 'false.Bool [none] .)
-  ---   if isConstructorT(TE1, getOps(MOD), MOD) [print "253"] .
-  --- ceq makeEqF('_=_[TE1, TE2], MOD) = (eq '_=_[TE1, TE2] = 'false.Bool [none] .)
-  ---   if isConstructorT(TE2, getOps(MOD), MOD) [print "255"] .
-  eq makeEqF2('_=_[TE1, TE2], MOD, PRSCMOD) =
-    if isConstructorT(TE1, getOps(MOD), MOD) then
-      (eq '_=_[TE2, TE1] = 'false.Bool [none] .)
-    else
-      if isConstructorT(TE2, getOps(MOD), MOD) then
-        (eq '_=_[TE1, TE2] = 'false.Bool [none] .)
-      else
-        makeEqF3('_=_[TE1, TE2], MOD, PRSCMOD)
-      fi
-    fi .
-  eq makeEqF3('_=_[C1, C2], MOD, PRSCMOD) = handleMakeEqFCs(C1, C2, MOD, PRSCMOD) .
-  eq makeEqF3('_=_[TE1, C2], MOD, PRSCMOD) = (eq '_=_[TE1, C2] = 'false.Bool [none] .) .
-  eq makeEqF3('_=_[C1, TE2], MOD, PRSCMOD) = (eq '_=_[TE2, C1] = 'false.Bool [none] .) .
-  eq makeEqF3('_=_[TE1, TE2], MOD, PRSCMOD) = 
-    (if checkExist(TE1, TE2) then
-      (eq '_=_[TE2, TE1] = 'false.Bool [none] .)
-    else
-      --- (eq '_=_[TE1, TE2] = 'false.Bool [none] .)
-      handleMakeEqFTs(TE1, TE2, MOD, PRSCMOD)
-    fi) .
-  eq makeEqF3(TE1, MOD, PRSCMOD) = (eq TE1 = 'false.Bool [none] .) [owise] .
+  op makeEqsTF : Term Module Module -> EqPair .
+  ceq makeEqsTF('_=_[TE1, TE2], MOD, PRSCMOD) = 
+    $ eq TE2 = 'true.Bool [none] . , eq TE2 = 'false.Bool [none] . $
+  if TE1 == 'true.Bool or TE1 == 'false.Bool .
+  ceq makeEqsTF('_=_[TE1, TE2], MOD, PRSCMOD) = 
+    $ eq TE1 = 'true.Bool [none] . , eq TE1 = 'false.Bool [none] . $
+  if TE2 == 'true.Bool or TE2 == 'false.Bool .
 
 ***(
   making equations between two constant based on constructor
   e.g., 0 = i should be converted to i = 0 since 0 is a ctor
 )
-  op handleMakeEqTCs : Constant Constant Module Module -> Equation .
-  op handleMakeEqFCs : Constant Constant Module Module -> Equation .
+  ceq makeEqsTF('_=_[TE1, TE2], MOD, PRSCMOD) =
+    $ eq TE2 = TE1 [none] . , eq '_=_[TE2, TE1] = 'false.Bool [none] . $
+  if isConstructorT(TE1, getOps(MOD), MOD) .
+  ceq makeEqsTF('_=_[C1, TE2], MOD, PRSCMOD) =
+    $ eq TE2 = C1 [none] . , eq '_=_[TE2, C1] = 'false.Bool [none] . $
+  if isConstructor(C1, getOps(MOD)) .
+  ceq makeEqsTF('_=_[TE1, TE2], MOD, PRSCMOD) =
+    $ eq TE1 = TE2 [none] . , eq '_=_[TE1, TE2] = 'false.Bool [none] . $
+  if isConstructorT(TE2, getOps(MOD), MOD) .
+  ceq makeEqsTF('_=_[TE1, C2], MOD, PRSCMOD) =
+    $ eq TE1 = C2 [none] . , eq '_=_[TE1, C2] = 'false.Bool [none] . $
+  if isConstructor(C2, getOps(MOD)) .
+
+  ceq makeEqsTF('_=_[C1, C2], MOD, PRSCMOD) 
+    = $makeEqsTF(C1, C2, MOD, PRSCMOD)
+  if C1 =/= 'true.Bool /\ C1 =/= 'false.Bool /\ 
+     C2 =/= 'true.Bool /\ C2 =/= 'false.Bool /\
+     not isConstructor(C1, getOps(MOD)) /\
+     not isConstructor(C2, getOps(MOD)) . 
+  ceq makeEqsTF('_=_[TE1, C2], MOD, PRSCMOD) 
+    = $ eq TE1 = C2 [none] . , eq '_=_[TE1, C2] = 'false.Bool [none] . $ 
+  if not(TE1 :: Constant) /\
+    C2 =/= 'true.Bool /\ C2 =/= 'false.Bool /\
+    not isConstructorT(TE1, getOps(MOD), MOD) /\
+    not isConstructor(C2, getOps(MOD)) . 
+  ceq makeEqsTF('_=_[C1, TE2], MOD, PRSCMOD) 
+    = $ eq TE2 = C1 [none] . , eq '_=_[TE2, C1] = 'false.Bool [none] . $
+  if not(TE2 :: Constant) /\
+    C1 =/= 'true.Bool /\ C1 =/= 'false.Bool /\
+    not isConstructorT(TE2, getOps(MOD), MOD) /\
+    not isConstructor(C1, getOps(MOD)) . 
+  ceq makeEqsTF('_=_[TE1, TE2], MOD, PRSCMOD) = 
+    if checkExist(TE1, TE2) 
+    then $ eq TE2 = TE1 [none] . , eq '_=_[TE2, TE1] = 'false.Bool [none] . $
+    else $makeEqsTF(TE1, TE2, MOD, PRSCMOD)
+    fi
+  if not(TE1 :: Constant) /\ not(TE2 :: Constant) /\
+    not isConstructorT(TE1, getOps(MOD), MOD) /\
+    not isConstructorT(TE2, getOps(MOD), MOD) .
+
+  eq makeEqsTF(TE1, MOD, PRSCMOD) = 
+    $ eq TE1 = 'true.Bool [none] . , eq TE1 = 'false.Bool [none] . $ [owise] .
 
 ***(
   auxiliary function
@@ -335,39 +317,15 @@ fmod HANDLE-EQS-CS is
     fi .
   eq isConstructor(C1, OP1 OPS) = isConstructor(C1, OPS) [owise] .
 
-  eq handleMakeEqTCs(C1, C2, MOD, PRSCMOD) = 
-    if isConstructor(C1, getOps(MOD)) then
-      (eq C2 = C1 [none] .)
-    else
-      if isConstructor(C2, getOps(MOD)) then
-        (eq C1 = C2 [none] .)
-      else
-        handleMakeEqTTs(C1, C2, MOD, PRSCMOD)
-      fi
-    fi .
-  
-  eq handleMakeEqFCs(C1, C2, MOD, PRSCMOD) = 
-    if isConstructor(C1, getOps(MOD)) then
-      (eq '_=_[C2, C1] = 'false.Bool [none] .) 
-    else
-      if isConstructor(C2, getOps(MOD)) then
-        (eq '_=_[C1, C2] = 'false.Bool [none] .)
-      else
-        handleMakeEqFTs(C1, C2, MOD, PRSCMOD)
-      fi
+--- check appearance to build equation
+  op $makeEqsTF : Term Term Module Module -> EqPair .
+  eq $makeEqsTF(TE1, TE2, MOD, PRSCMOD) = 
+    if checkTermExistEqs(TE1, getEqs(PRSCMOD)) and
+        not(checkTermExistEqs(TE2, getEqs(PRSCMOD))) 
+    then $ eq TE2 = TE1 [none] . , eq '_=_[TE2, TE1] = 'false.Bool [none] . $
+    else $ eq TE1 = TE2 [none] . , eq '_=_[TE1, TE2] = 'false.Bool [none] . $
     fi .
 
-***(
-  making equations between two terms based on constructor
-  e.g., s(place(s,r)) = place(s,p) should be converted to 
-    place(s,p) = s(place(s,r)) since s(SNat) is a ctor
-)
-  op handleMakeEqTTs : Term Term Module Module -> Equation .
-  op handleMakeEqFTs : Term Term Module Module -> Equation .
-
-***(
-  auxiliary function
-)
   op isConstructorT : Term OpDeclSet Module -> Bool .
   eq isConstructorT(TE1, none, MOD) = false .
   eq isConstructorT(Q1[TL1], op Q1 : TYL -> TY1 [ATTS1 ctor ATTS2] . OPS, MOD) =
@@ -387,38 +345,6 @@ fmod HANDLE-EQS-CS is
       false
     fi .
   eq checkMatchTermL(TL1, TYL, MOD) = false [owise] .
-  
-  eq handleMakeEqTTs(TE1, TE2, MOD, PRSCMOD) = 
-    if isConstructorT(TE1, getOps(MOD), MOD) then
-      (eq TE2 = TE1 [none] .)
-    else
-      if isConstructorT(TE2, getOps(MOD), MOD) then
-        (eq TE1 = TE2 [none] .)
-      else
-        if checkTermExistEqs(TE1, getEqs(PRSCMOD)) and
-            not(checkTermExistEqs(TE2, getEqs(PRSCMOD))) then
-          (eq TE2 = TE1 [none] .)
-        else
-          (eq TE1 = TE2 [none] .)
-        fi
-      fi
-    fi .
-
-  eq handleMakeEqFTs(TE1, TE2, MOD, PRSCMOD) = 
-    if isConstructorT(TE1, getOps(MOD), MOD) then
-      (eq '_=_[TE2, TE1] = 'false.Bool [none] .) 
-    else 
-      if isConstructorT(TE2, getOps(MOD), MOD) then
-        (eq '_=_[TE1, TE2] = 'false.Bool [none] .)
-      else
-        if checkTermExistEqs(TE1, getEqs(PRSCMOD)) and
-            not(checkTermExistEqs(TE2, getEqs(PRSCMOD))) then
-          (eq '_=_[TE2, TE1] = 'false.Bool [none] .) 
-        else
-          (eq '_=_[TE1, TE2] = 'false.Bool [none] .)
-        fi
-      fi
-    fi .
 
 --- check a term exist in a set of equations
   op checkTermExistEqs : Term EquationSet -> Bool .
@@ -492,8 +418,6 @@ fmod HANDLE-EQS-CS is
 
 endfm
 
---- reduce in TERM-UTILS : getCheckResultBool(findTermCeqC(('_=_['true.Bool,'_<_['place['s.Sys,'p.Pid],'s['next['s.Sys]]]],'_=_[
-    --- 'true.Bool,'_<_['place['s.Sys,'p.Pid],'s['s['next['s.Sys]]]]]))) .
 ***(
   handle specification module (protocol specification)
 )
@@ -739,7 +663,7 @@ fmod IPSG-CONDITION-EQUATION is
     checkMatchParamsTermL(TEL1, TEL2) .
   eq checkMatchParamsTerm(TE1, TE2) = false [owise] .
 
-  eq checkMatchParamsTermL(empty, empty) = true .
+  eq checkMatchParamsTermL(empty, TEL1) = (TEL1 == empty) .
   eq checkMatchParamsTermL((TE1 , TEL1) , (TE2 , TEL2)) = 
     if checkMatchParamsTerm(TE1, TE2) then
       checkMatchParamsTermL(TEL1, TEL2)
@@ -755,7 +679,7 @@ fmod IPSG-CONDITION-EQUATION is
      TE4 := getTerm(metaReduce(M, TE2)) .
   eq checkContrast1(CEQ1, CEQ2, M) = checkResult('false.Bool, false) [owise] .
 
-  eq checkContrast2(
+  ceq checkContrast2(
       Q1[TEL1],
       '_xor_['true.Bool, Q1[TEL2]]
     ) = 
@@ -763,8 +687,9 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult(Q1[TEL1], true) 
     else
       checkResult('false.Bool, false) 
-    fi .
-  eq checkContrast2(
+    fi 
+  if Q1 =/= '_xor_ .
+  ceq checkContrast2(
       '_xor_['true.Bool, Q1[TEL1]],
       Q1[TEL2]
     ) = 
@@ -772,9 +697,10 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult('_=_['false.Bool, Q1[TEL1]], true) 
     else
       checkResult('false.Bool, false) 
-    fi .
+    fi 
+  if Q1 =/= '_xor_ .
 
-  eq checkContrast2(
+  ceq checkContrast2(
       Q1[TEL1],
       '_=_['false.Bool, Q1[TEL2]]
     ) = 
@@ -782,8 +708,9 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult(Q1[TEL1], true) 
     else
       checkResult('false.Bool, false) 
-    fi .
-  eq checkContrast2(
+    fi 
+  if Q1 =/= '_xor_ .
+  ceq checkContrast2(
       '_=_['false.Bool, Q1[TEL1]],
       Q1[TEL2]
     ) = 
@@ -791,27 +718,10 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult('_=_['false.Bool, Q1[TEL1]], true) 
     else
       checkResult('false.Bool, false) 
-    fi .
+    fi 
+  if Q1 =/= '_xor_ .
   
-  eq checkContrast2(
-      '_xor_[Q1[TEL1], Q2[TEL2]],
-      '_xor_['true.Bool, Q1[TEL3], Q2[TEL4]]
-    ) = 
-    if checkMatchParamsTermL(TEL1, TEL3) and checkMatchParamsTermL(TEL2, TEL4) then
-      checkResult('_xor_[Q1[TEL1], Q2[TEL2]], true) 
-    else
-      checkResult('false.Bool, false) 
-    fi .
-  eq checkContrast2(
-      '_xor_['true.Bool, Q1[TEL1], Q2[TEL2]],
-      '_xor_[Q1[TEL3], Q2[TEL4]]
-    ) = 
-    if checkMatchParamsTermL(TEL1, TEL3) and checkMatchParamsTermL(TEL2, TEL4) then
-      checkResult('_=_['false.Bool, '_xor_[Q1[TEL1], Q2[TEL2]]], true) 
-    else
-      checkResult('false.Bool, false) 
-    fi .
-  eq checkContrast2(
+  ceq checkContrast2(
       '_xor_[Q1[TEL1], Q2[TEL2]],
       '_xor_['true.Bool, Q2[TEL4], Q1[TEL3]]
     ) = 
@@ -819,8 +729,9 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult('_xor_[Q1[TEL1], Q2[TEL2]], true) 
     else
       checkResult('false.Bool, false) 
-    fi .
-  eq checkContrast2(
+    fi 
+  if Q1 =/= Q2 .
+  ceq checkContrast2(
       '_xor_['true.Bool, Q1[TEL1], Q2[TEL2]],
       '_xor_[Q2[TEL4], Q1[TEL3]]
     ) = 
@@ -828,15 +739,27 @@ fmod IPSG-CONDITION-EQUATION is
       checkResult('_=_['false.Bool, '_xor_[Q1[TEL1], Q2[TEL2]]], true) 
     else
       checkResult('false.Bool, false) 
+    fi 
+  if Q1 =/= Q2 .
+
+  eq checkContrast2(
+      '_xor_[Q1[TEL1], TEL3],
+      '_xor_['true.Bool, Q1[TEL2], TEL4]
+    ) = 
+    if checkMatchParamsTermL(TEL1, TEL2) and checkMatchParamsTermL(TEL3, TEL4) then
+      checkResult('_xor_[Q1[TEL1], TEL3], true) 
+    else
+      checkResult('false.Bool, false) 
     fi .
   eq checkContrast2(
-      '_xor_['true.Bool, TE1, TE2, TE3],
-      '_xor_[TE1, TE2, TE3]
-    ) = checkResult('_=_['false.Bool, '_xor_[TE1, TE2, TE3]], true) .
-  eq checkContrast2(
-      '_xor_[TE1, TE2, TE3],
-      '_xor_['true.Bool, TE1, TE2, TE3]
-    ) = checkResult('_xor_[TE1, TE2, TE3], true) .
+      '_xor_['true.Bool, Q1[TEL1], TEL3],
+      '_xor_[Q1[TEL2], TEL4]
+    ) = 
+    if checkMatchParamsTermL(TEL1, TEL2) and checkMatchParamsTermL(TEL3, TEL4) then
+      checkResult('_=_['false.Bool, '_xor_[Q1[TEL1], TEL3]], true) 
+    else
+      checkResult('false.Bool, false) 
+    fi .
 
   eq checkContrast2(TE1, TE2) = checkResult('false.Bool, false) [owise] .
 
@@ -950,15 +873,9 @@ fmod ISPG-HANDLE-INVS is
   pr PARSE-TERM .
   pr HANDLE-EQS-CS .
   pr INV-TERMPERMUTATIONSET-MAP .
+  pr PARAM2TERMSET-MAP .
+  pr INV-TUPLETERMPERNSET-MAP .
 
-  op permutateParams : ParamList ParamList -> ParamPernSet .
-  op doPermutateParams : ParamList ParamList ParamList -> ParamPernSet .
-  op doPermutateParams2 : ParamList ParamList ParamList ParamList -> ParamPernSet .
-  op findMatches : Param ParamList -> ParamList .
-  op doFindMatches : Param ParamList ParamList -> ParamList .
-  op remove : ParamList Param -> ParamList .
-  op doRemove : ParamList Param ParamList -> ParamList .
-  
   vars QIL QIL1 QIL2 : QidList .
   vars QI QI1 QI2 QI3 QI4 : Qid .
   vars INSP2 INSP1 : IPSGInputSpec .
@@ -969,16 +886,15 @@ fmod ISPG-HANDLE-INVS is
   vars MS1 MS2 : IPSGModuleSpec .
   vars INV1 INV2 : Invariant .
   vars INVL INVL2 : InvList .
-  var N : Nat .
-  var PP : ParamPernSet .
-  vars TP TP0 : TermPernSet .
+  vars N N2 N3 : Nat .
+  vars PP PP2 : ParamPernSet .
+  vars TP TP0 TP2 TP3 : TermPernSet .
   vars MOD MOD1 MOD2 : Module .
   var EQS : EquationSet .
   vars EQ1 EQ2 : Equation .
   vars ATTS : AttrSet .
   vars TE1 TE2 TE3 : Term .
   vars TEL TEL2 : TermList .
-
   vars C1 C2 C3 C4 : Constant .
   vars OPS1 OPS2 : OpDeclSet .
   vars OP1 OP2 : OpDecl .
@@ -993,23 +909,349 @@ fmod ISPG-HANDLE-INVS is
   vars STR1 STR2 : String .
   vars CRL : CheckResultList .
   vars CR CR1 CR2 : CheckResult .
-  vars MITPS : MapInvTermPernSet .
+  --- vars MITPS : MapInvTermPernSet .
+  vars TES TES2 TES3 : TermSet .
+  vars MPTS MPTS2 : MapParamTS .
+  vars MITTPS : MapInvTTermPernSet .
 
-  eq remove(PRL1, PA1) = doRemove(PRL1, PA1, (nil).ParamList) .
-  eq doRemove((nil).ParamList, PA2, PRL2) = PRL2 .
-  eq doRemove(PA1 PRL1, PA1, PRL2) = PRL2 PRL1 .
-  ceq doRemove(PA1 PRL1, PA2, PRL2) = doRemove(PRL1, PA2, PRL2 PA1) 
-    if PA1 =/= PA2 .
+  op handleFalseCase : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
+  op $handleFalseCase : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
+  ceq handleFalseCase(PRSC1, MS1, INSP1) = 
+    if PRSC2 == PRSC1
+    then $handleFalseCase(PRSC1, MS1, INSP1)
+    else PRSC2 
+    fi
+  if PRSC2 := testUseInvs(PRSC1, MS1, getInputSpecInvs(INSP1)) .
 
-  eq findMatches(PA1, PRL2) = doFindMatches(PA1, PRL2, (nil).ParamList) .
-  eq doFindMatches(PA1, (nil).ParamList, PRL1) = PRL1 .
-  eq doFindMatches(PA1, PA2 PRL2, PRL3) =
-    if getParamType(PA1) == getParamType(PA2) then
-      doFindMatches(PA1, PRL2, PRL3 PA2)
+  ceq $handleFalseCase(PRSC1, MS1, INSP1) = 
+      if PRSC2 == PRSC1 
+      then 
+        if tryUseMt1Lm(PRSC1, MS1, INVL, INVL, MITTPS, 
+          (none).EquationSet, depthTryUseLm) == PRSC1 
+        then returnFalsePrsc(PRSC1)
+        else tryUseMt1Lm(PRSC1, MS1, INVL, INVL, MITTPS, 
+          (none).EquationSet, depthTryUseLm)
+        fi
+      else PRSC2
+      fi
+    if INVL := getInputSpecInvs(INSP1) /\
+      MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
+      MITTPS := genMapInvTTermPernSet(PRSC1, MOD, INVL) /\
+      PRSC2 := testUseInvsT(PRSC1, MOD, INVL, MITTPS) .
+
+  op returnFalsePrsc : IPSGProofScore -> IPSGProofScore .
+  eq returnFalsePrsc(PRSC1) = addComment2Prsc(PRSC1, 'false)
+    [print "-->  a false case"] .
+
+***(
+  try to use an invariant as a lemma by replace the params of lemma with
+  any wellFormed terms.
+  e.g., inv8(s, s(next(s)), s(s(next(s)))) implies inv7....
+)
+  op testUseInvsT : IPSGProofScore Module InvList 
+    MapInvTTermPernSet -> IPSGProofScore .
+  eq testUseInvsT(PRSC1, MOD, (nil).InvList, MITTPS) = PRSC1 .
+  eq testUseInvsT(PRSC1, MOD, INV1 INVL, 
+      (INV1 |-> | empty , empty | , MITTPS)) = testUseInvsT(PRSC1, MOD, INVL, MITTPS) .
+  ceq testUseInvsT(PRSC1, MOD, INV1 INVL, 
+      (INV1 |-> | ({TEL}, TP) , TP2 | , MITTPS)) 
+    = if PRSC2 == PRSC1
+      then testUseInvsT(PRSC1, MOD, INV1 INVL, 
+          (INV1 |-> | TP , TP2 | , MITTPS)) 
+      else PRSC2 
+      fi
+  if PRSC2 := checkLmInst(PRSC1, MOD, INV1, TEL) .
+  ceq testUseInvsT(PRSC1, MOD, INV1 INVL, 
+      (INV1 |-> | empty , ({TEL}, TP2) | , MITTPS)) 
+    = if PRSC2 == PRSC1
+      then testUseInvsT(PRSC1, MOD, INV1 INVL, 
+          (INV1 |-> | empty , TP2 | , MITTPS))
+      else PRSC2 
+      fi
+  if PRSC2 := checkLmInst(PRSC1, MOD, INV1, TEL) .
+
+  op checkLmInst : IPSGProofScore Module Invariant TermList -> IPSGProofScore .
+  ceq checkLmInst(PRSC1, MOD, INV1, TEL) =
+    if getTerm(metaReduce(MOD, LM:Term)) == 'false.Bool or-else
+        getTerm(metaReduce(MOD, TE:Term)) == 'true.Bool 
+    then prsc(getPrscModule(PRSC1),
+        (getInvName(INV1) '`( myDownTermL(TEL, MOD) '`) ) ' 'implies 
+          getPrscReductionCmd(PRSC1),
+        TE:Term,
+        'true '`, 'use getInvName(INV1) 'as 'a 'lemma,
+        getPrscMapEqs(PRSC1),
+        getInvTagetName(PRSC1),
+        getInvTargetParams(PRSC1),
+        getInvTransName(PRSC1),
+        getInvTransParams(PRSC1),
+        getPrscILemma(PRSC1))
+    else PRSC1
+    fi
+    if LM:Term := getInvName(INV1)[ TEL ] /\
+      TE:Term := '_implies_[LM:Term, getPrscMetaReduceCmd(PRSC1)] .
+
+***(
+  try to use more than one invariants as lemmas
+)
+  op tryUseMt1Lm : IPSGProofScore IPSGModuleSpec InvList 
+    InvList MapInvTTermPernSet EquationSet Nat -> PrscList .
+  --- eq tryUseMt1Lm(PRSC1, MS1, INVL, (nil).InvList, MITPS, EQS, N) = PRSC1 .
+  ceq tryUseMt1Lm(PRSC1, MS1, INVL, INVL2, MITTPS, EQS, N) = PRSC1 
+    if N == 0 or INVL2 == (nil).InvList .
+  eq tryUseMt1Lm(PRSC1, MS1, INVL, INV1 INVL2, MITTPS, EQS, N) = 
+    (if tryUseMt1Lm'(PRSC1, MS1, INVL, INV1, MITTPS, EQS, N) == PRSC1 
+     then tryUseMt1Lm(PRSC1, MS1, INVL, INVL2, MITTPS, EQS, N)
+     else tryUseMt1Lm'(PRSC1, MS1, INVL, INV1, MITTPS, EQS, N)
+     fi) [owise] .
+
+  op tryUseMt1Lm' : IPSGProofScore IPSGModuleSpec InvList 
+    Invariant MapInvTTermPernSet EquationSet Nat -> PrscList .
+  ceq tryUseMt1Lm'(PRSC1, MS1, INVL, INV1, MITTPS, EQS, N) = 
+    if PRSCL2 == PRSC1 then
+      doTryUseMt1Lm'(PRSC1, MOD, INV1, TP, MS1, INVL, MITTPS, EQS, N)
     else
-      doFindMatches(PA1, PRL2, PRL3)
-    fi .
+      PRSCL2
+    fi
+    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
+      TP0 := findMatchesTL(MOD, eqs2TermSet(EQS), getInvParams(INV1)) /\
+      | TP2 , TP3 | := MITTPS[INV1] /\
+      TP := TP2 , TP3 /\
+      PRSCL2 := doTryUseMt1Lm'(PRSC1, MOD, INV1, TP0, MS1, INVL, MITTPS, EQS, N) /\
+      QI := getInvName(INV1) .
+
+  op doTryUseMt1Lm' : IPSGProofScore Module Invariant TermPernSet 
+    IPSGModuleSpec InvList MapInvTTermPernSet EquationSet Nat -> PrscList .
+  eq doTryUseMt1Lm'(PRSC1, MOD, INV1, (empty).TermPernSet, MS1, INVL, 
+    MITTPS, EQS, N) = PRSC1 .
+  ceq doTryUseMt1Lm'(PRSC1, MOD, INV1, ({TEL}, TP), MS1, INVL, 
+    MITTPS, EQS, N) =
+    *** choose one term from CRL to conduct case splitting
+      if PRSCL1 == PRSC1 then
+        doTryUseMt1Lm'(PRSC1, MOD, INV1, TP, MS1, INVL, MITTPS, EQS, N)
+      else
+        PRSCL1
+      fi
+    if TE1 := getInvName(INV1)[ TEL ] /\
+       TE2 := getTerm(metaReduce(MOD, TE1)) /\
+       CRL := getTermListRd2False(PRSC1, MOD, TE2, extractSplitCasesT(TE2)) /\
+       PRSCL1 := doTryUseMt1Lm'2(PRSC1, MOD, INV1, CRL, TEL, MS1, INVL, MITTPS, EQS, N) .
+
+  op doTryUseMt1Lm'2 : IPSGProofScore Module Invariant CheckResultList 
+    TermList IPSGModuleSpec InvList MapInvTTermPernSet EquationSet Nat -> PrscList .
+  eq doTryUseMt1Lm'2(PRSC1, MOD, INV1, nil, TEL, MS1, INVL, MITTPS, EQS, N) = PRSC1 .
+  ceq doTryUseMt1Lm'2(PRSC1, MOD, INV1, (checkResult(TE1, B:Bool) CRL), 
+    TEL, MS1, INVL, MITTPS, EQS, N) = 
+      if PRSCL1 =/= PRSC2 or
+            getTerm(metaReduce(
+              tempMod2(getPrscModule(PRSC2), MS1, getPrscILemma(PRSC2)), 
+              getPrscMetaReduceCmd(PRSC2))) == 'true.Bool 
+          then --- the remaining prsc still returns true even do not need to use another lemma
+        if B:Bool == true then 
+          PRSC4 PRSCL1
+        else
+          PRSCL1 PRSC4
+        fi
+      else
+        doTryUseMt1Lm'2(PRSC1, MOD, INV1, CRL, TEL, MS1, INVL, MITTPS, EQS, N)
+      fi
+    if $ EQ1 , EQ2 $ := makeEqsTF(TE1, MOD, getPrscModule(PRSC1)) /\
+        PRSC2 := if B:Bool == true then 
+            addEquation2Prsc(PRSC1, EQ2, 2)
+          else
+            addEquation2Prsc(PRSC1, EQ1, 1)
+          fi /\
+        PRSC3 := if B:Bool == true then 
+            addEquation2Prsc(PRSC1, EQ1, 1)
+          else
+            addEquation2Prsc(PRSC1, EQ2, 2)
+          fi /\
+        PRSC4 := 
+          prsc(getPrscModule(PRSC3),
+            (getInvName(INV1) '`( myDownTermL(TEL, getPrscModule(PRSC3)) '`) ) 
+              ' 'implies getPrscReductionCmd(PRSC3),
+            '_implies_[
+              getInvName(INV1)[ TEL ], 
+              getPrscMetaReduceCmd(PRSC3)],
+            'true '`, ' 'use getInvName(INV1) 'as 'a 'lemma,
+            getPrscMapEqs(PRSC3),
+            getInvTagetName(PRSC3),
+            getInvTargetParams(PRSC3),
+            getInvTransName(PRSC3),
+            getInvTransParams(PRSC3),
+            getPrscILemma(PRSC3)) /\
+       PRSCL1 := tryUseMt1Lm2(PRSC2, MS1, INVL, MITTPS, EQS EQ1, N) .
+
+  op tryUseMt1Lm2 : IPSGProofScore IPSGModuleSpec InvList 
+    MapInvTTermPernSet EquationSet Nat -> PrscList .
+  --- this case do not need to use another lemma, 
+  --- but the remaining prsc still returns true
+  ceq tryUseMt1Lm2(PRSC1, MS1, INVL, MITTPS, EQS, N) =
+      if TE1 == 'true.Bool then
+        PRSC1
+      else
+        tryUseMt1Lm2'(PRSC1, MS1, MOD, INVL, MITTPS, EQS, N)
+      fi
+    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
+      TE1 := getTerm(metaReduce(MOD, getPrscMetaReduceCmd(PRSC1))) .
+
+  op tryUseMt1Lm2' : IPSGProofScore IPSGModuleSpec Module InvList 
+    MapInvTTermPernSet EquationSet Nat -> PrscList .
+  ceq tryUseMt1Lm2'(PRSC1, MS1, MOD, INVL, MITTPS, EQS, s(N)) =
+      if PRSC2 == PRSC1 then
+        tryUseMt1Lm(PRSC1, MS1, INVL, INVL, MITTPS, EQS, N)
+      else
+        PRSC2
+      fi
+    if PRSC2 := testUseInvsT(PRSC1, MOD, INVL, MITTPS) .
+
+*** get a list of terms (equation) such that when we add it,
+*** the term will be reduced to false
+  op getTermListRd2False : IPSGProofScore Module Term TermList -> CheckResultList .
+  eq getTermListRd2False(PRSC1, MOD, TE1, (empty).TermList) = nil .
+  ceq getTermListRd2False(PRSC1, MOD, TE1, (TE2 , TEL)) =
+      if getTerm(metaReduce(MOD1, TE1)) == 'false.Bool then
+        checkResult(TE2, true)
+      else 
+        if getTerm(metaReduce(MOD2, TE1)) == 'false.Bool then
+          checkResult(TE2, false)
+        else
+          nil
+        fi
+      fi 
+      getTermListRd2False(PRSC1, MOD, TE1, (TEL))
+    if $ EQ1 , EQ2 $ := makeEqsTF(TE2,MOD,getPrscModule(PRSC1)) /\
+       MOD1 := copyModule&AddEqs2(MOD, EQ1, 1) /\
+       MOD2 := copyModule&AddEqs2(MOD, EQ2, 2) .
+
+*** build a map
+  op genMapInvTTermPernSet : IPSGProofScore Module InvList -> MapInvTTermPernSet .
+  eq genMapInvTTermPernSet(PRSC1, MOD, (nil).InvList) 
+      = (empty).MapInvTTermPernSet .
+  ceq genMapInvTTermPernSet(PRSC1, MOD, INV1 INVL) = 
+      insert(INV1, | TP , substractSet(TP2, TP) |,
+        genMapInvTTermPernSet(PRSC1, MOD, INVL)) 
+    if TES := params2TermSet(PRSC1, MOD) /\
+      TP := findMatchesTL(MOD, TES, getInvParams(INV1)) /\
+      TES2 := eqs2TermSet(getEqs(getPrscModule(PRSC1))) /\
+      TP2 := findMatchesTL(MOD, TES2, getInvParams(INV1)) .
+      --- N := | TP | /\ N2 := | substractSet(TP2, TP) | [print "1223 " INV1 " ## " N " ## " N2] .
+
+  op findMatchesTL : Module TermSet ParamList -> TermPernSet .
+  op findMatchesT : Module TermSet Param -> TermSet .
+  op doFindMatchesT : Module Term Param -> TermSet .
+  op doFindMatchesT2 : Module TermList Param -> TermSet .
+
+  op getMapParamTS : Module TermSet ParamList -> MapParamTS .
+  eq getMapParamTS(MOD, TES, (nil).ParamList) = (empty).MapParamTS .
+  eq getMapParamTS(MOD, TES, PA1 PRL1) = 
+    (PA1 |-> findMatchesT(MOD, TES, PA1) , getMapParamTS(MOD, TES, PRL1) ) .
+  --- if TES2 := findMatchesT(MOD, TES, PA1) [print "1238 " PA1 " ### " TES2] .
+
+  op map2TermPernSet : MapParamTS ParamList -> TermPernSet .
+  eq map2TermPernSet(PA1 |-> empty, PRL1) = empty .
+  eq map2TermPernSet((PA1 |-> empty , MPTS), PRL1) = empty .
+  eq map2TermPernSet(MPTS, PRL1) = $map2TermPernSet(MPTS, PRL1, empty) [owise] .
+
+  op $map2TermPernSet  : MapParamTS ParamList TermList -> TermPernSet .
+  op $map2TermPernSet2 : MapParamTS TermSet ParamList TermList -> TermPernSet .
+  eq $map2TermPernSet(MPTS, nil, TEL) = {TEL} .
+  eq $map2TermPernSet((PA1 |-> TES , MPTS), PA1 PRL2, TEL) = 
+    $map2TermPernSet2((PA1 |-> TES , MPTS), TES, PA1 PRL2, TEL) .
+  eq $map2TermPernSet2(MPTS, empTS, PA1 PRL2, TEL) = empty .
+  eq $map2TermPernSet2(MPTS, TE1, PA1 PRL2, TEL) = 
+    $map2TermPernSet(MPTS, PRL2, (TEL, TE1)) .
+  eq $map2TermPernSet2(MPTS, (TE1 $ TES), PA1 PRL2, TEL) = 
+    $map2TermPernSet(MPTS, PRL2, (TEL, TE1)) ,
+    $map2TermPernSet2(MPTS, TES, PA1 PRL2, TEL) .
+
+  eq findMatchesTL(MOD, empTS, PRL1) = (empty).TermPernSet .
+  ceq findMatchesTL(MOD, TES, PRL1) =
+    map2TermPernSet(getMapParamTS(MOD, TES, PRL1), PRL1)
+  if TES =/= empTS .
+
+  eq findMatchesT(MOD, empTS, PA1) = empty .
+  eq findMatchesT(MOD, TE1, PA1) = doFindMatchesT(MOD,TE1,PA1) .
+  ceq findMatchesT(MOD, TE1 $ TES, PA1) =
+    appendTS(TES2, TES3) 
+  if TES2 := doFindMatchesT(MOD,TE1,PA1) /\
+    TES3 := findMatchesT(MOD,TES,PA1) .
+
+--- wellFormed(MOD, qid("VAR:" + string(QI2)) <- QI[TEL])
+  ceq doFindMatchesT(MOD, QI[TEL], param(QI1, QI2)) =
+    if sortLeq(MOD, getType(RP:ResultPair), QI2)
+      then insertTS(getTerm(RP:ResultPair), 
+        doFindMatchesT2(MOD, TEL, param(QI1, QI2)))
+    else
+      doFindMatchesT2(MOD, TEL, param(QI1, QI2))
+    fi 
+    if RP:ResultPair := metaReduce(MOD, QI[TEL]) .
+
+--- wellFormed(MOD, qid("VAR:" + string(QI2)) <- TE1) 
+  eq doFindMatchesT(MOD, TE1, param(QI1, QI2)) =
+    if sortLeq(MOD, getType(metaReduce(MOD, TE1)), QI2)
+    then getTerm(metaReduce(MOD, TE1))
+    else empTS
+    fi [owise] .
+
+  eq doFindMatchesT2(MOD, empty, PA1) = empTS .
+  eq doFindMatchesT2(MOD, (TE1, TEL), PA1) = 
+    appendTS(doFindMatchesT(MOD,TE1,PA1), doFindMatchesT2(MOD,TEL,PA1)) .
+
+--- induction hypothesis + conclusion
+  op params2TermSet : IPSGProofScore Module -> TermSet .
+  op $params2TermSet1 : Module TermList -> TermSet .
+  op $params2TermSet2 : Module TermList -> TermSet .
+  ceq params2TermSet(PRSC1, MOD) = 
+      appendTS($params2TermSet1(MOD,TEL), $params2TermSet2(MOD,TEL2))
+  if QI[TEL] := getPrscInvIndHyp(PRSC1) /\
+      QI2[TEL2] := getPrscInvIndConl(PRSC1) .
+  eq $params2TermSet1(MOD, empty) = empTS .
+  ceq $params2TermSet1(MOD, (TE1 , TEL)) 
+    = insertTS(TE2, $params2TermSet1(MOD, TEL)) 
+  if TE2 := getTerm(metaReduce(MOD, TE1)) .
   
+  eq $params2TermSet2(MOD, empty) = empTS .
+  ceq $params2TermSet2(MOD, (C1 , TEL)) 
+    = insertTS(TE2, $params2TermSet2(MOD, TEL)) 
+  if TE2 := getTerm(metaReduce(MOD, C1)) .
+  eq $params2TermSet2(MOD, (TE1 , TEL)) = $params2TermSet2(MOD, TEL) [owise] .
+
+  op substractSet : TermPernSet TermPernSet -> TermPernSet .
+  eq substractSet(TP, empty) = TP .
+  eq substractSet(empty, TP) = empty .
+  eq substractSet(TP, { TEL }) = delete({ TEL }, TP) .
+  eq substractSet(TP, ({ TEL } , TP2) ) 
+    = substractSet(delete({ TEL }, TP), TP2) .
+
+***
+  op testUseInvs : IPSGProofScore IPSGModuleSpec InvList -> IPSGProofScore .
+  eq testUseInvs(PRSC1, MS1, (nil).InvList) = PRSC1 .
+  ceq testUseInvs(PRSC1, MS1, INV1 INVL) = 
+     prsc(getPrscModule(PRSC1),
+        (getInvName(INV1) '`( genEqParams(PRL1) '`) ) ' 'implies 
+          getPrscReductionCmd(PRSC1),
+        TE:Term,
+        'true '`, 'use getInvName(INV1) 'as 'a 'lemma,
+        getPrscMapEqs(PRSC1),
+        getInvTagetName(PRSC1),
+        getInvTargetParams(PRSC1),
+        getInvTransName(PRSC1),
+        getInvTransParams(PRSC1),
+        getPrscILemma(PRSC1))
+  if PP := permutateParams(getInvParams(INV1),
+            getInvTargetParams(PRSC1) getInvTransParams(PRSC1)) /\
+    {PRL1} , PP2 := PP /\
+    MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
+    LM:Term := getInvName(INV1)[ genEqParamsTerm(MOD, PRL1) ] /\
+    TE:Term := '_implies_[LM:Term, getPrscMetaReduceCmd(PRSC1)] /\
+    (getTerm(metaReduce(MOD, LM:Term)) == 'false.Bool or-else
+      getTerm(metaReduce(MOD, TE:Term)) == 'true.Bool) .
+  eq testUseInvs(PRSC1, MS1, INV1 INVL) = testUseInvs(PRSC1, MS1, INVL) [owise] .
+
+  op permutateParams : ParamList ParamList -> ParamPernSet .
+  op doPermutateParams : ParamList ParamList ParamList -> ParamPernSet .
+  op doPermutateParams2 : ParamList ParamList ParamList ParamList -> ParamPernSet .
+
 ***(
     PRL1 is an invariant that we want to test if can be used as a lemma
     PRL2 is the current inv, which need to generate its proof scores
@@ -1017,26 +1259,23 @@ fmod ISPG-HANDLE-INVS is
   eq permutateParams(PRL1, PRL2) = doPermutateParams(PRL1, PRL2, (nil).ParamList) .
   eq doPermutateParams((nil).ParamList, PRL2, PRL3) = {PRL3} .
   ceq doPermutateParams(PA1 PRL1, PRL2, PRL3) =
-    (if size(MATCHES:ParamList) == 0 then
-      empty
+    if size(MATCHES:ParamList) == 0 
+    then empty
     else
-      if size(MATCHES:ParamList) == 1 then
-        doPermutateParams(PRL1, remove(PRL2, head(MATCHES:ParamList)), 
+      if size(MATCHES:ParamList) == 1 
+      then doPermutateParams(PRL1, remove(PRL2, head(MATCHES:ParamList)), 
           PRL3 MATCHES:ParamList)
-      else
-        doPermutateParams2(PRL1, PRL2, PRL3, MATCHES:ParamList)
+      else doPermutateParams2(PRL1, PRL2, PRL3, MATCHES:ParamList)
       fi
-    fi)
-    if MATCHES:ParamList := findMatches(PA1, PRL2) .
+    fi
+  if MATCHES:ParamList := findMatches(PA1, PRL2) .
 
-  eq doPermutateParams2(PRL1, PRL2, PRL3, PA1 (nil).ParamList) =
-    doPermutateParams(PRL1, remove(PRL2, PA1), PRL3 PA1) .
-  ceq doPermutateParams2(PRL1, PRL2, PRL3, PA1 PRL4) =
+  eq doPermutateParams2(PRL1, PRL2, PRL3, (nil).ParamList) = empty .
+  eq doPermutateParams2(PRL1, PRL2, PRL3, PA1 PRL4) =
     doPermutateParams(PRL1, remove(PRL2, PA1), PRL3 PA1) ,
-    doPermutateParams2(PRL1, PRL2, PRL3, PRL4)
-    if PRL4 =/= (nil).ParamList .
+    doPermutateParams2(PRL1, PRL2, PRL3, PRL4) .
 
-  op handleFalseCase : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
+***(
   ceq handleFalseCase(PRSC1, MS1, INSP1) = 
     if PRSC2 == PRSC1 then
       if testUseInvsT(PRSC1, MS1, INVL) == PRSC1 then
@@ -1062,162 +1301,6 @@ fmod ISPG-HANDLE-INVS is
     if INVL := getInputSpecInvs(INSP1) /\
     PRSC2 := testUseInvs(PRSC1, MS1, INVL) /\
     MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) .
-
-  op testUseInvs : IPSGProofScore IPSGModuleSpec InvList -> IPSGProofScore .
-  op testUseInv : IPSGProofScore IPSGModuleSpec Invariant -> IPSGProofScore .
-  op doTestUseInv : IPSGProofScore IPSGModuleSpec Invariant ParamPernSet -> IPSGProofScore .
-  
-  eq testUseInvs(PRSC1, MS1, (nil).InvList) = PRSC1 .
-  ceq testUseInvs(PRSC1, MS1, INV1 INVL) =
-    if PRSC2 == PRSC1 then
-      testUseInvs(PRSC1, MS1, INVL)
-    else
-      PRSC2
-    fi
-    if PRSC2 := testUseInv(PRSC1, MS1, INV1) .
-  
-  ceq testUseInv(PRSC1, MS1, INV1) =
-    if P:ParamPernSet == empty then
-      PRSC1
-    else
-      doTestUseInv(PRSC1, MS1, INV1, P:ParamPernSet)
-    fi
-    if P:ParamPernSet :=
-      permutateParams(getInvParams(INV1),
-        getInvTargetParams(PRSC1) getInvTransParams(PRSC1)) .
-
-  eq doTestUseInv(PRSC1, MS1, INV1, empty) = PRSC1 .
-  ceq doTestUseInv(PRSC1, MS1, INV1, ({PRL1}, PP)) =
-    (if RE:Term == 'true.Bool then
-      prsc(getPrscModule(PRSC1),
-        (getInvName(INV1) '`( genEqParams(PRL1) '`) ) ' 'implies 
-          getPrscReductionCmd(PRSC1),
-        TE:Term,
-        '\g 'true '`, ' 'use getInvName(INV1) 'as 'a 'lemma '\o,
-        getPrscMapEqs(PRSC1),
-        getInvTagetName(PRSC1),
-        getInvTargetParams(PRSC1),
-        getInvTransName(PRSC1),
-        getInvTransParams(PRSC1),
-        getPrscILemma(PRSC1))
-    else
-      doTestUseInv(PRSC1, MS1, INV1, PP)
-    fi)
-    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
-      TE:Term := '_implies_[
-        getInvName(INV1)[ genEqParamsTerm(MOD, PRL1) ], 
-        getPrscMetaReduceCmd(PRSC1)] /\
-      RE:Term := getTerm(metaReduce(MOD, TE:Term)) .
-
-***(
-  try to use an invariant as a lemma by replace the params of lemma with
-  any wellFormed terms.
-  e.g., inv8(s, s(next(s)), s(s(next(s)))) implies inv7....
-)
-  op testUseInvsT : IPSGProofScore IPSGModuleSpec InvList -> IPSGProofScore .
-  op testUseInvT : IPSGProofScore IPSGModuleSpec Invariant -> IPSGProofScore .
-  op doTestUseInvT : IPSGProofScore Module Invariant TermPernSet -> IPSGProofScore .
-  --- op tryReplaceParam : IPSGProofScore Module Invariant MapParamTL 
-    --- ParamList MapParamTL -> IPSGProofScore .
-  op findMatchesT : Module EquationSet Param -> TermList .
-  op doFindMatchesT : Module Term Param -> TermList .
-  op doFindMatchesT2 : Module TermList Param -> TermList .
-  op findMatchesTL : Module EquationSet ParamList -> TermPernSet .
-  op doFindMatchesTL : Module EquationSet ParamList TermList -> TermPernSet .
-  op doFindMatchesTL2 : TermList Module EquationSet ParamList TermList 
-    -> TermPernSet .
-
-  eq findMatchesTL(MOD, (none).EquationSet, PRL1) = (empty).TermPernSet .
-  eq findMatchesTL(MOD, EQS, PRL1) = doFindMatchesTL(MOD, EQS, PRL1, empty) [owise] .
-  eq doFindMatchesTL(MOD, EQS, (nil).ParamList, TEL) = {TEL} .
-
-  ceq doFindMatchesTL(MOD, EQS, PA1 PRL1, TEL) = 
-    if MATCHES:TermList == empty then
-      empty
-    else 
-      if MATCHES:TermList :: Term then
-        doFindMatchesTL(MOD, EQS, PRL1, (TEL, MATCHES:TermList))
-      else
-        doFindMatchesTL2(MATCHES:TermList, MOD, EQS, PRL1, TEL)
-      fi
-    fi
-    if MATCHES:TermList := findMatchesT(MOD, EQS, PA1) .
-  
-  eq doFindMatchesTL2((TE1, empty), MOD, EQS, PRL1, TEL2) =
-    doFindMatchesTL(MOD, EQS, PRL1, (TEL2, TE1)) .
-  ceq doFindMatchesTL2((TE1, TEL), MOD, EQS, PRL1, TEL2) =
-    doFindMatchesTL(MOD, EQS, PRL1, (TEL2, TE1)),
-    doFindMatchesTL2(TEL, MOD, EQS, PRL1, TEL2)
-    if TEL =/= empty .
-
-  eq findMatchesT(MOD, none, PA1) = empty .
-  eq findMatchesT(MOD, (eq TE1 = TE2 [ ATTS ] .) EQS, PA1) =
-    appendList(appendList(doFindMatchesT(MOD, TE1, PA1),
-      doFindMatchesT(MOD, TE2, PA1)),
-      findMatchesT(MOD, EQS, PA1)) .
-
-  ceq doFindMatchesT(MOD, QI[TEL], param(QI1, QI2)) =
-    if B:Bool then
-      appendList(getTerm(metaReduce(MOD,QI[TEL])), 
-        doFindMatchesT2(MOD, TEL, param(QI1, QI2)))
-    else
-      doFindMatchesT2(MOD, TEL, param(QI1, QI2))
-    fi 
-    if B:Bool := wellFormed(MOD, qid("VAR:" + string(QI2)) <- QI[TEL]) .
-
-  eq doFindMatchesT(MOD, TE1, param(QI1, QI2)) =
-    if wellFormed(MOD, qid("VAR:" + string(QI2)) <- TE1) then
-      TE1
-    else
-      empty
-    fi .
-
-  eq doFindMatchesT2(MOD, empty, PA1) = empty .
-  eq doFindMatchesT2(MOD, (TE1, TEL), PA1) = 
-    appendList(doFindMatchesT(MOD, TE1, PA1),
-      doFindMatchesT2(MOD, TEL, PA1)) .
-
-  eq testUseInvsT(PRSC1, MS1, (nil).InvList) = PRSC1 .
-  ceq testUseInvsT(PRSC1, MS1, INV1 INVL) = 
-    if PRSC2 == PRSC1 then
-      testUseInvsT(PRSC1, MS1, INVL)
-    else
-      PRSC2
-    fi 
-    if PRSC2 := testUseInvT(PRSC1, MS1, INV1) .
-
-  ceq testUseInvT(PRSC1, MS1, INV1) = 
-    if TP == empty then
-      PRSC1
-    else
-      doTestUseInvT(PRSC1, MOD, INV1, TP)
-    fi
-    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
-      TP := findMatchesTL(
-        MOD, getEqs(getPrscModule(PRSC1)), getInvParams(INV1)) .
-
-  eq doTestUseInvT(PRSC1, MOD, INV1, (empty).TermPernSet) = PRSC1 .
-  ceq doTestUseInvT(PRSC1, MOD, INV1, ({TEL}, TP)) =
-    (if RE:Term == 'true.Bool then
-      prsc(getPrscModule(PRSC1),
-        (getInvName(INV1) '`( myDownTermL(TEL, MOD) '`) ) ' 'implies 
-          getPrscReductionCmd(PRSC1),
-        TE:Term,
-        '\g 'true '`, ' 'use getInvName(INV1) 'as 'a 'lemma '\o,
-        getPrscMapEqs(PRSC1),
-        getInvTagetName(PRSC1),
-        getInvTargetParams(PRSC1),
-        getInvTransName(PRSC1),
-        getInvTransParams(PRSC1),
-        getPrscILemma(PRSC1))
-    else
-      doTestUseInvT(PRSC1, MOD, INV1, TP)
-    fi)
-    if TE:Term := '_implies_[
-        getInvName(INV1)[ TEL ],
-        getPrscMetaReduceCmd(PRSC1)] /\
-      RE:Term := getTerm(metaReduce(MOD, TE:Term)) .
-
 
   op conjectLemma : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> IPSGProofScore .
   ceq conjectLemma(PRSC1, MS1, INSP1) = 
@@ -1253,152 +1336,61 @@ fmod ISPG-HANDLE-INVS is
     fi)
     if STR1:String := string(QI1) .
 
-***(
-  try to use more than one invariants as lemmas
+  --- ceq testUseInvsT(PRSC1, MOD, INV1 INVL, (INV1 |-> | TP , TP2 | , MITTPS)) 
+  ---   = if PRSC2 == PRSC1 
+  ---     then testUseInvsT(PRSC1, MOD, INVL)
+  ---     else PRSC2
+  ---     fi 
+  --- if 
+  --- PRSC2 := doTestUseInvT(PRSC1, MOD, INV1) .
+
+  --- ceq testUseInvT(PRSC1, MOD, INV1) = 
+  ---   if TP == empty 
+  ---   then PRSC1
+  ---   else doTestUseInvT(PRSC1, MOD, INV1, TP, TP)
+  ---   fi
+  ---   if MOD := tempMod2(getPrscModule(PRSC1), MOD, getPrscILemma(PRSC1)) /\
+  ---     TES := params2TermSet(PRSC1, MOD) /\
+  ---     TP := findMatchesTL(MOD, TES, getInvParams(INV1)) .
+
+  --- eq doTestUseInvT(PRSC1, MOD, INV1, (empty).TermPernSet, TP2) 
+  ---   = if TP2 == empty
+  ---     then PRSC1 
+  ---     else testUseInvT2(PRSC1, MOD, INV1, TP2) 
+  ---     fi .
+  --- ceq doTestUseInvT(PRSC1, MOD, INV1, ({TEL}, TP), TP2) =
+  ---   (if getTerm(metaReduce(MOD, LM:Term)) == 'false.Bool or-else
+  ---       getTerm(metaReduce(MOD, TE:Term)) == 'true.Bool then
+  ---     prsc(getPrscModule(PRSC1),
+  ---       (getInvName(INV1) '`( myDownTermL(TEL, MOD) '`) ) ' 'implies 
+  ---         getPrscReductionCmd(PRSC1),
+  ---       TE:Term,
+  ---       '\g 'true '`, ' 'use getInvName(INV1) 'as 'a 'lemma '\o,
+  ---       getPrscMapEqs(PRSC1),
+  ---       getInvTagetName(PRSC1),
+  ---       getInvTargetParams(PRSC1),
+  ---       getInvTransName(PRSC1),
+  ---       getInvTransParams(PRSC1),
+  ---       getPrscILemma(PRSC1))
+  ---   else
+  ---     doTestUseInvT(PRSC1, MOD, INV1, TP, TP2)
+  ---   fi)
+  ---   if LM:Term := getInvName(INV1)[ TEL ] /\
+  ---     TE:Term := '_implies_[LM:Term, getPrscMetaReduceCmd(PRSC1)] .
+  ---     --- [print "--> trying " LM:Term] .
+
+  --- op testUseInvT2 : IPSGProofScore Module Invariant TermPernSet -> IPSGProofScore .
+  --- ceq testUseInvT2(PRSC1, MOD, INV1, TP2) = 
+  ---   if TP3 == empty 
+  ---   then PRSC1
+  ---   else doTestUseInvT(PRSC1, MOD, INV1, TP3, empty) 
+  ---   fi
+  ---   if TES := eqs2TermSet(getEqs(getPrscModule(PRSC1))) /\
+  ---     TP := findMatchesTL(MOD, TES, getInvParams(INV1)) /\
+  ---     TP3 := substractSet(TP, TP2) .
+  ---     --- N := | TP2 | /\ N2 := | TP | /\ N3 := | TP3 | [print "1172 " N " ## " N2 " ## " N3] .
+
 )
-  op tryUseMt1Lm : IPSGProofScore IPSGModuleSpec InvList 
-    InvList MapInvTermPernSet EquationSet Nat -> PrscList .
-  --- eq tryUseMt1Lm(PRSC1, MS1, INVL, (nil).InvList, MITPS, EQS, N) = PRSC1 .
-  ceq tryUseMt1Lm(PRSC1, MS1, INVL, INVL2, MITPS, EQS, N) = PRSC1 
-    if N == 0 or INVL2 == (nil).InvList .
-  ceq tryUseMt1Lm(PRSC1, MS1, INVL, INV1 INVL2, MITPS, EQS, N) = 
-    (if PRSCL2 == PRSC1 then
-      tryUseMt1Lm(PRSC1, MS1, INVL, INVL2, MITPS, EQS, N)
-    else
-      PRSCL2
-    fi) 
-    if PRSCL2 := tryUseMt1Lm'(PRSC1, MS1, INVL, INV1, MITPS, EQS, N) [owise] .
-
-  op tryUseMt1Lm' : IPSGProofScore IPSGModuleSpec InvList 
-    Invariant MapInvTermPernSet EquationSet Nat -> PrscList .
-  ceq tryUseMt1Lm'(PRSC1, MS1, INVL, INV1, MITPS, EQS, N) = 
-    if PRSCL2 == PRSC1 then
-      doTryUseMt1Lm'(PRSC1, MOD, INV1, TP, MS1, INVL, MITPS, EQS, N)
-    else
-      PRSCL2
-    fi
-    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
-      TP0 := findMatchesTL(MOD, EQS, getInvParams(INV1)) /\
-      TP := MITPS[INV1] /\
-      PRSCL2 := doTryUseMt1Lm'(PRSC1, MOD, INV1, TP0, MS1, INVL, MITPS, EQS, N) /\
-      QI := getInvName(INV1) .
-
-  op doTryUseMt1Lm' : IPSGProofScore Module Invariant TermPernSet 
-    IPSGModuleSpec InvList MapInvTermPernSet EquationSet Nat -> PrscList .
-  eq doTryUseMt1Lm'(PRSC1, MOD, INV1, (empty).TermPernSet, MS1, INVL, 
-    MITPS, EQS, N) = PRSC1 .
-  ceq doTryUseMt1Lm'(PRSC1, MOD, INV1, ({TEL}, TP), MS1, INVL, 
-    MITPS, EQS, N) =
-    *** choose one term from CRL to conduct case splitting
-      if PRSCL1 == PRSC1 then
-        doTryUseMt1Lm'(PRSC1, MOD, INV1, TP, MS1, INVL, MITPS, EQS, N)
-      else
-        PRSCL1
-      fi
-    if TE1 := getInvName(INV1)[ TEL ] /\
-       TE2 := getTerm(metaReduce(MOD, TE1)) /\
-       CRL := getTermListRd2False(PRSC1, MOD, TE2, extractSplitCasesT(TE2)) /\
-       PRSCL1 := doTryUseMt1Lm'2(PRSC1, MOD, INV1, CRL, TEL, MS1, INVL, MITPS, EQS, N) .
-
-  op doTryUseMt1Lm'2 : IPSGProofScore Module Invariant CheckResultList 
-    TermList IPSGModuleSpec InvList MapInvTermPernSet EquationSet Nat -> PrscList .
-  eq doTryUseMt1Lm'2(PRSC1, MOD, INV1, nil, TEL, MS1, INVL, MITPS, EQS, N) = PRSC1 .
-  ceq doTryUseMt1Lm'2(PRSC1, MOD, INV1, (checkResult(TE1, B:Bool) CRL), 
-    TEL, MS1, INVL, MITPS, EQS, N) = 
-      if PRSCL1 =/= PRSC2 or
-            getTerm(metaReduce(
-              tempMod2(getPrscModule(PRSC2), MS1, getPrscILemma(PRSC2)), 
-              getPrscMetaReduceCmd(PRSC2))) == 'true.Bool 
-          then --- the remaining prsc still returns true even do not need to use another lemma
-        if B:Bool == true then 
-          PRSC4 PRSCL1
-        else
-          PRSCL1 PRSC4
-        fi
-      else
-        doTryUseMt1Lm'2(PRSC1, MOD, INV1, CRL, TEL, MS1, INVL, MITPS, EQS, N)
-      fi
-    if EQT:Equation := makeEqT(TE1, MOD, getPrscModule(PRSC1)) /\
-        EQF:Equation := makeEqF(TE1, MOD, getPrscModule(PRSC1)) /\
-        PRSC2 := if B:Bool == true then 
-            addEquation2Prsc(PRSC1, EQF:Equation, 2)
-          else
-            addEquation2Prsc(PRSC1, EQT:Equation, 1)
-          fi /\
-        PRSC3 := if B:Bool == true then 
-            addEquation2Prsc(PRSC1, EQT:Equation, 1)
-          else
-            addEquation2Prsc(PRSC1, EQF:Equation, 2)
-          fi /\
-        PRSC4 := 
-          prsc(getPrscModule(PRSC3),
-            (getInvName(INV1) '`( myDownTermL(TEL, getPrscModule(PRSC3)) '`) ) 
-              ' 'implies getPrscReductionCmd(PRSC3),
-            '_implies_[
-              getInvName(INV1)[ TEL ], 
-              getPrscMetaReduceCmd(PRSC3)],
-            '\g 'true '`, ' 'use getInvName(INV1) 'as 'a 'lemma '\o,
-            getPrscMapEqs(PRSC3),
-            getInvTagetName(PRSC3),
-            getInvTargetParams(PRSC3),
-            getInvTransName(PRSC3),
-            getInvTransParams(PRSC3),
-            getPrscILemma(PRSC3)) /\
-       PRSCL1 := tryUseMt1Lm2(PRSC2, MS1, INVL, MITPS, EQS EQT:Equation, N) .
-
-  op tryUseMt1Lm2 : IPSGProofScore IPSGModuleSpec InvList 
-    MapInvTermPernSet EquationSet Nat -> PrscList .
-  --- this case do not need to use another lemma, 
-  --- but the remaining prsc still returns true
-  ceq tryUseMt1Lm2(PRSC1, MS1, INVL, MITPS, EQS, N) =
-      if TE1 == 'true.Bool then
-        PRSC1
-      else
-        tryUseMt1Lm2'(PRSC1, MS1, INVL, MITPS, EQS, N)
-      fi
-    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
-      TE1 := getTerm(metaReduce(MOD, getPrscMetaReduceCmd(PRSC1))) .
-
-  op tryUseMt1Lm2' : IPSGProofScore IPSGModuleSpec InvList 
-    MapInvTermPernSet EquationSet Nat -> PrscList .
-  ceq tryUseMt1Lm2'(PRSC1, MS1, INVL, MITPS, EQS, s(N)) =
-      if PRSC2 == PRSC1 then
-        tryUseMt1Lm(PRSC1, MS1, INVL, INVL, MITPS, EQS, N)
-      else
-        PRSC2
-      fi
-    if PRSC2 := testUseInvsT(PRSC1, MS1, INVL) .
-
-*** get a list of terms (equation) such that when we add it,
-*** the term will be reduced to false
-  op getTermListRd2False : IPSGProofScore Module Term TermList -> CheckResultList .
-  eq getTermListRd2False(PRSC1, MOD, TE1, (empty).TermList) = nil .
-  ceq getTermListRd2False(PRSC1, MOD, TE1, (TE2 , TEL)) =
-      if getTerm(metaReduce(MOD1, TE1)) == 'false.Bool then
-        checkResult(TE2, true)
-      else 
-        if getTerm(metaReduce(MOD2, TE1)) == 'false.Bool then
-          checkResult(TE2, false)
-        else
-          nil
-        fi
-      fi 
-      getTermListRd2False(PRSC1, MOD, TE1, (TEL))
-    if EQT:Equation := makeEqT(TE2,MOD,getPrscModule(PRSC1)) /\
-       EQF:Equation := makeEqF(TE2,MOD,getPrscModule(PRSC1)) /\
-       MOD1 := copyModule&AddEqs2(MOD, EQT:Equation, 1) /\
-       MOD2 := copyModule&AddEqs2(MOD, EQF:Equation, 2) .
-
-*** build a map
-  op genMapInvTermPernSet : InvList Module EquationSet -> MapInvTermPernSet .
-  eq genMapInvTermPernSet((nil).InvList, MOD, EQS) 
-    = (empty).MapInvTermPernSet .
-  eq genMapInvTermPernSet(INVL, MOD, (none).EquationSet) 
-    = (empty).MapInvTermPernSet .
-  eq genMapInvTermPernSet(INV1 INVL, MOD, EQS) = 
-    insert(INV1, findMatchesTL(MOD, EQS, getInvParams(INV1)),
-      genMapInvTermPernSet(INVL, MOD, EQS)) .
-
 endfm
 
 ***(
@@ -1434,8 +1426,8 @@ mod IPSG-HANDLE is
   vars PRSC1 PRSC2 : IPSGProofScore .
   vars PRSCL1 PRSCL2 : PrscList .
   vars MS1 MS2 : IPSGModuleSpec .
-  vars TE TE2 TE3 TE4 : Term .
-  vars TEL TEL2 : TermList .
+  vars TE TE2 TE3 TE4 TE5 : Term .
+  vars TEL TEL2 TEL3 : TermList .
   vars INV1 INV2 : Invariant .
   vars INVL : InvList .
   vars INVT1 INVT2 : InvariantTarget .
@@ -1444,6 +1436,14 @@ mod IPSG-HANDLE is
   vars ILS : IPSGLemmas .
   vars LMS LMS1 : ListLemmas .
   vars LM1 LM2 : LemmaGenerated .
+  vars CON1 CON2 CON3 : EqCondition .
+  vars EQS EQS2 EQS3 EQS4 : EquationSet .
+  vars EQ1 EQ2 : Equation .
+  vars V V2 : Variable .
+  vars C C2 : Constant .
+  vars SUB : Substitution .
+  vars MOD : Module .
+  vars RP : ResultPair .
 
 --- apply theorem of constant
   op applyToCIndVarParam : Param -> Param .
@@ -1498,121 +1498,121 @@ mod IPSG-HANDLE is
   op genPrsc : IPSGInputSpec IPSGModuleSpec 
     -> PrscList .
   op doGenPrsc : IPSGInputSpec IPSGModuleSpec 
-    InvTargetList -> PrscList .
+    InvTargetList EquationSet EquationSet -> PrscList .
   --- op genPrscAnInv : IPSGInputSpec OpDeclSet OpDeclSet IPSGModuleSpec 
     --- InvariantTarget -> PrscList .
   op genPrscInit : IPSGInputSpec OpDeclSet IPSGModuleSpec
-    InvariantTarget Nat -> PrscList .
+    InvariantTarget Nat EquationSet EquationSet -> PrscList .
   op genPrscInduction : IPSGInputSpec OpDeclSet IPSGModuleSpec
-    InvariantTarget Nat ListLemmas -> PrscList .
+    InvariantTarget Nat ListLemmas EquationSet EquationSet -> PrscList .
   op genPrscNoInduction : IPSGInputSpec IPSGModuleSpec
     InvariantTarget Nat -> PrscList .
 
-  eq genPrsc(INSP1, MS1) = 
-    doGenPrsc(INSP1, MS1, getInputSpecInvsTarget(INSP1)) .
+  ceq genPrsc(INSP1, MS1) = 
+    doGenPrsc(INSP1, MS1, INVT1 INVTL, EQS2, EQS3) 
+  if INVT1 INVTL := getInputSpecInvsTarget(INSP1) /\
+    OPS3 := getMSOps(MS1) /\
+    QI := getParamType(getInvIndVar(INVT1)) /\
+    OPS2 := getTransOpS(QI, OPS3) /\
+    EQS := getEqs(getSpecModule(MS1)) /\
+    EQS2 := extIndCEqs(getSpecModule(MS1), EQS, OPS2) /\
+    EQS3 := extOtherCEqs(EQS, EQS2) .
   
-  eq doGenPrsc(INSP1, MS1, (nil).InvTargetList) = (nil).PrscList .
+  eq doGenPrsc(INSP1, MS1, (nil).InvTargetList, EQS2, EQS3) = (nil).PrscList .
 
 --- in case not applying induction
-  ceq doGenPrsc(INSP1, MS1, INVT1 INVTL) =
+  ceq doGenPrsc(INSP1, MS1, INVT1 INVTL, EQS2, EQS3) =
       genPrscNoInduction(INSP1, MS1, INVT1, 1)
-      doGenPrsc(INSP1, MS1, INVTL) 
+      doGenPrsc(INSP1, MS1, INVTL, EQS2, EQS3) 
     if getInvIndVar(INVT1) == pnull .
 
-  ceq doGenPrsc(INSP1, MS1, INVT1 INVTL) =
-      genPrscInit(INSP1, OPS1, MS2, INVT1, 1)
+  ceq doGenPrsc(INSP1, MS1, INVT1 INVTL, EQS, EQS2) =
+      genPrscInit(INSP1, OPS1, MS1, INVT1, 1, EQS, EQS2)
       PRSCL1
       --- doGenPrsc(INSP1, MS1, INVTL)
       doGenPrscLm(
         addLmsInv(INSP1,INVL),
-        addLMs(MS2,getLmOps(LMS),getLmEqs(LMS)), 
-        convLms2InvTs(INVL,getInvIndVar(INVT1)) INVTL)
+        addLMs(MS1,getLmOps(LMS),getLmEqs(LMS)), 
+        convLms2InvTs(INVL,getInvIndVar(INVT1)) INVTL,
+        EQS, EQS2)
     if OPS3 := getMSOps(MS1) /\
       QI := getParamType(getInvIndVar(INVT1)) /\
       OPS1 := getInitOps(QI, OPS3) /\
       OPS2 := getTransOpS(QI, OPS3) /\
-      MS2 := modSpec2(
-        replaceAllCondEqs(getSpecModule(MS1), getTransOpS(QI, OPS3)),
-        getSpecModOps(MS1),
-        getSpecModEqs(MS1)) /\
-      PRSCL1 := 
-        genPrscInduction(INSP1, OPS2, MS2, INVT1, 1, (nil).ListLemmas) /\
+      PRSCL1 := genPrscInduction(
+          INSP1, OPS2, MS1, INVT1, 1, (nil).ListLemmas, EQS, EQS2) /\
       PRSC1 := last(PRSCL1) /\
       ILS := getPrscILemma(PRSC1) /\
       LMS := getIPSGLms(ILS) /\
-      INVL := lms2InvList(LMS) .
+      QI2 := getInvName(INVT1) /\
+      INVL := lms2InvList(LMS) [print "--> Finish inv " QI2] .
 
   op doGenPrscLm : IPSGInputSpec IPSGModuleSpec 
-    InvTargetList -> PrscList .  
-  eq doGenPrscLm(INSP1, MS1, (nil).InvTargetList) = (nil).PrscList .
-  ceq doGenPrscLm(INSP1, MS1, INVT1 INVTL) =
-      genPrscInit(INSP1, OPS1, MS1, INVT1, 1)
+    InvTargetList EquationSet EquationSet -> PrscList .  
+  eq doGenPrscLm(INSP1, MS1, (nil).InvTargetList, EQS, EQS2) = (nil).PrscList .
+  ceq doGenPrscLm(INSP1, MS1, INVT1 INVTL, EQS, EQS2) =
+      genPrscInit(INSP1, OPS1, MS1, INVT1, 1, EQS, EQS2)
       PRSCL1
       doGenPrscLm(
         INSP2,
         MS2, 
-        convLms2InvTs(INVL, getInvIndVar(INVT1)) INVTL)
-      --- doGenPrscLm(
-        --- INSP2,
-        --- MS2, 
-        --- INVTL)
+        convLms2InvTs(INVL, getInvIndVar(INVT1)) INVTL,
+        EQS, EQS2)
     if OPS3 := getMSOps(MS1) /\
       QI := getParamType(getInvIndVar(INVT1)) /\
       OPS1 := getInitOps(QI, OPS3) /\
       OPS2 := getTransOpS(QI, OPS3) /\
       PRSCL1 := 
-        genPrscInduction(INSP1, OPS2, MS1, INVT1, 1, (nil).ListLemmas) /\
+        genPrscInduction(INSP1, OPS2, MS1, INVT1, 1, (nil).ListLemmas, EQS, EQS2) /\
       ILS := getPrscILemma(last(PRSCL1)) /\
       LMS := getIPSGLms(ILS) /\
       INVL := lms2InvList(getIPSGLms(ILS)) /\
       INSP2 := addLmsInv(INSP1,INVL) /\
       MS2 := addLMs(MS1,getLmOps(LMS),getLmEqs(LMS)) .
 
-  eq genPrscInit(INSP1, none, MS1, INVT1, N1) = (nil).PrscList .
+  eq genPrscInit(INSP1, none, MS1, INVT1, N1, EQS, EQS2) = (nil).PrscList .
 
 --- ignore base case if only generate PrSc for a transition
-  ceq genPrscInit(INSP1, OPS1, MS1, INVT1, N1) = (nil).PrscList 
+  ceq genPrscInit(INSP1, OPS1, MS1, INVT1, N1, EQS, EQS2) = (nil).PrscList 
     if INVT1 :: InvariantTarget2 .
-  ceq genPrscInit(INSP1, OPS1, MS1, INVT1, N1) = (nil).PrscList 
-    if OPS1 == (none).OpDeclSet .
-  ceq genPrscInit(INSP1, op QI1 : nil -> QI2 [ATTS1] . OPS1, MS1, INVT1, N1) =
+  eq genPrscInit(INSP1, (none).OpDeclSet, MS1, INVT1, N1, EQS, EQS2) 
+    = (nil).PrscList .
+  ceq genPrscInit(INSP1, op QI1 : nil -> QI2 [ATTS1] . OPS1, MS1, INVT1, 
+      N1, EQS, EQS2) =
     PRSCL1
-    genPrscInit(INSP1, OPS1, MS1, INVT1, N1)
-    if INV-NAME:Qid := getInvName(INVT1) /\
-      IND-PARAM:Param := 
-        applyToCIndVarParam(getInvIndVar(INVT1)) /\
-      INV-PARAMS:ParamList := 
-        applyToCInvParams(getInvParams(INVT1)) /\
-      PRSCL1 := loopGenPrsc(prsc-init(
-        fmod qid(const-modName + string(INV-NAME:Qid) + "-0") is 
+    genPrscInit(INSP1, OPS1, MS1, INVT1, N1, EQS, EQS2)
+    if not(INVT1 :: InvariantTarget2) /\ 
+      QI3 := getInvName(INVT1) /\
+      PA1 := applyToCIndVarParam(getInvIndVar(INVT1)) /\
+      PRL1 := applyToCInvParams(getInvParams(INVT1)) /\
+      PRSCL1 := loopGenPrsc0(prsc-init(
+        fmod qid(const-modName + string(QI3) + "-0") is 
           protecting getInputSpecMod(INSP1) .
           sorts none .
           none
-          genOps(IND-PARAM:Param
-              INV-PARAMS:ParamList
-              applyToCTranParams((nil).TypeList, IND-PARAM:Param, 
-                INV-PARAMS:ParamList))
+          genOps(PA1 PRL1 applyToCTranParams((nil).TypeList, PA1, PRL1))
           none --- mb
           none --- eqs
         endfm,
-        INV-NAME:Qid,
+        QI3,
         QI1,
-        INV-PARAMS:ParamList,
-        IND-PARAM:Param,
+        PRL1,
+        PA1,
         MS1
-      ), MS1, INSP1) .
+      ), MS1, INSP1, empty, EQS2) .
 
-  eq genPrscInduction(INSP1, none, MS1, INVT1, N1, LMS) = (nil).PrscList .
+  eq genPrscInduction(INSP1, none, MS1, INVT1, N1, LMS, EQS, EQS2) = (nil).PrscList .
 
 --- ignore other cases if only generate PrSc for a transition
   ceq genPrscInduction(INSP1, op QI1 : TL1 -> QI2 [ATTS1] . OPS1, MS1, 
-    invariantTarget2(INV1, PA1, QI3), N1, LMS) = 
-      genPrscInduction(INSP1, OPS1, MS1, invariantTarget2(INV1, PA1, QI3), N1, LMS)
+    invariantTarget2(INV1, PA1, QI3), N1, LMS, EQS, EQS2) = 
+      genPrscInduction(INSP1, OPS1, MS1, invariantTarget2(INV1, PA1, QI3), 
+        N1, LMS, EQS, EQS2)
     if QI1 =/= QI3 .
 
 --- in case no induction
   ceq genPrscNoInduction(INSP1, MS1, INVT1, N1) = 
-      checkComplicated(prsc2(
+      loopGenPrsc0(prsc2(
         fmod qid(const-modName + string(INV-NAME:Qid) + "-" + string(N1,10)) is 
           protecting getInputSpecMod(INSP1) .
           sorts none .
@@ -1624,175 +1624,181 @@ mod IPSG-HANDLE is
         INV-NAME:Qid,
         INV-PARAMS:ParamList,
         MS1
-      ), MS1, INSP1)
+      ), MS1, INSP1, empty, none)
     if
       INV-NAME:Qid := 
         getInvName(INVT1) /\
       INV-PARAMS:ParamList := 
         applyToCInvParams(getInvParams(INVT1)) .
 
-  ceq genPrscInduction(INSP1, op QI1 : TL1 -> QI2 [ATTS1] . OPS1, MS1, INVT1, N1, LMS) = 
+  ceq genPrscInduction(INSP1, op QI1 : TL1 -> QI2 [ATTS1] . OPS1, MS1, INVT1, 
+      N1, LMS, EQS, EQS2) = 
     PRSCL1
-      genPrscInduction(INSP2, OPS1, MS1, INVT1, s(N1), getIPSGLms(ILS)) --- can be disable for simple debug
-    if INV-NAME:Qid := getInvName(INVT1) /\
-      IND-PARAM:Param := 
-        applyToCIndVarParam(getInvIndVar(INVT1)) /\
-      INV-PARAMS:ParamList := 
-        applyToCInvParams(getInvParams(INVT1)) /\
-      PRSCL1 := checkComplicated(prsc1(
-        fmod qid(const-modName + string(INV-NAME:Qid) + "-" + string(N1,10)) is 
-          protecting getInputSpecMod(INSP1) .
-          sorts none .
-          none
-          genOps(IND-PARAM:Param
-              INV-PARAMS:ParamList
-              applyToCTranParams(TL1, IND-PARAM:Param,
-                INV-PARAMS:ParamList))
-          none --- mb
-          none --- eqs
-        endfm,
-        INV-NAME:Qid,
-        QI1,
-        INV-PARAMS:ParamList,
-        applyToCTranParams(TL1, IND-PARAM:Param, INV-PARAMS:ParamList),
-        IND-PARAM:Param,
-        MS1,
-        ipsglemmas(LMS, size(LMS))
-      ), MS1, INSP1) /\
+      genPrscInduction(INSP2, OPS1, MS1, INVT1, s(N1), getIPSGLms(ILS), EQS, EQS2) --- can be disable for simple debug
+    if QI3 := getInvName(INVT1) /\
+      PA1 := applyToCIndVarParam(getInvIndVar(INVT1)) /\
+      PRL1 := applyToCInvParams(getInvParams(INVT1)) /\
+      PRL2 := applyToCTranParams(TL1, PA1, PRL1) /\
+      PRSC1 := prsc1(
+          fmod qid(const-modName + string(QI3) + "-" + string(N1,10)) is 
+            protecting getInputSpecMod(INSP1) .
+            sorts none .
+            none
+            genOps(PA1 PRL1 PRL2) --- S.Sys + R.Pid + P.Pid , Q.Pid
+            none --- mb
+            none --- eqs
+          endfm,
+          QI3,
+          QI1,
+          PRL1,
+          PRL2,
+          PA1,
+          MS1,
+          ipsglemmas(LMS, size(LMS))) /\
+      QI3[TEL] := getPrscInvIndConl(PRSC1) /\
+      MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
+      TEL2 := extIndCondition(MOD, EQS, 
+                        op QI1 : TL1 -> QI2 [ATTS1] .,
+                        findInstTerm(TEL, QI1)) /\
+      PRSCL1 := loopGenPrsc0(PRSC1, MS1, INSP1, TEL2, EQS2) /\
       ILS := getPrscILemma(last(PRSCL1)) /\
       INSP2 := addLmsInv(INSP1,lms2InvList(getIPSGLms(ILS))) [print "--> Finish " QI1] .
 
-***(
-  check if a very complicated term, conducting case splitting first,
-  otherwise asking metaReduce directly
-)
-  op checkComplicated : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
-  ceq checkComplicated(PRSC1, MS1, INSP1) =
-    if isComplicated2(TE2) then
-      --- if countNodes(TE2) < 1 then
-        --- handleCS(PRSC1, MS1, INSP1, TMOD:Module, TE)
-      --- else 
-        handleCS(PRSC1, MS1, INSP1, TMOD:Module, TE2)
-      --- fi
-    else
-      checkComplicated2(PRSC1, MS1, INSP1)
-    fi 
-  if TMOD:Module := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
-    --- TE3 := getPrscInvIndHyp(PRSC1) /\
-    TE4 := getPrscInvIndConl(PRSC1) /\
-    --- TE := getTerm(metaReduce(TMOD:Module, TE3)) /\
-    TE2 := getTerm(metaReduce(TMOD:Module, TE4)) .
+--- extract condition equations which have effective conditions
+--- ceq exit(S,R) = S if not c-exit(S,R) .
+  op extIndCEqs : Module EquationSet OpDeclSet -> EquationSet .
+  --- eq extIndEqs(MOD, none, OPS) = none .
+  ceq extIndCEqs(MOD,
+      ceq QI1[TEL] = TE if CON1 [ATTS1] . EQS2,
+      op QI1 : TL1 -> QI2 [ATTS2] . OPS1)
+    = ceq QI1[TEL] = TE if CON1 [ATTS1] .
+      extIndCEqs(MOD, EQS2, op QI1 : TL1 -> QI2 [ATTS2] . OPS1) 
+    if getType(metaReduce(MOD, TE)) == QI2 .
+  eq extIndCEqs(MOD, EQS, OPS1) = none [owise] .
 
-  op checkComplicated2 : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
-  ceq checkComplicated2(PRSC1, MS1, INSP1) =
-    if isComplicated2(TE) then
-        handleCS2(PRSC1, MS1, INSP1, TMOD:Module, TE)
-    else
-      loopGenPrsc(PRSC1, MS1, INSP1)
-    fi 
-  if TMOD:Module := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\
-    TE3 := getPrscInvIndHyp(PRSC1) /\
-    TE := getTerm(metaReduce(TMOD:Module, TE3)) .
+  op extOtherCEqs : EquationSet EquationSet -> EquationSet .
+  --- ceq extOtherCEqs(none, EQS3) = none .
+  ceq extOtherCEqs(EQ1 EQS2, EQS3) = extOtherCEqs(EQS2, EQS3)
+    if EQ1 EQS4 := EQS3 .
+  eq extOtherCEqs(eq TE = TE2 [ATTS1] . EQS2, EQS3) 
+    = extOtherCEqs(EQS2, EQS3) .
+  eq extOtherCEqs(EQS2, EQS3) = EQS2 [owise] .
 
-  op handleCS : IPSGProofScore IPSGModuleSpec IPSGInputSpec Module Term -> PrscList .
-  eq handleCS(PRSC1, MS1, INSP1, TMOD:Module, TE) = 
-    --- split by term
-    if extractIfCondsT(TE) == empty then
-      checkCompCS(PRSC1,
-        chooseStrategyCS(PRSC1,extractSplitCasesT(TE)),TMOD:Module,MS1,INSP1)
-    else
-      --- split by if else condition
-      checkCompCS(PRSC1,
-        chooseStrategyCS(PRSC1,extractIfCondsT(TE)),TMOD:Module,MS1,INSP1)
-    fi .
 
-  op handleCS2 : IPSGProofScore IPSGModuleSpec IPSGInputSpec Module Term -> PrscList .
-  eq handleCS2(PRSC1, MS1, INSP1, TMOD:Module, TE) = 
-    --- split by term
-    if extractIfCondsT(TE) == empty then
-      checkCompCS(PRSC1,
-        chooseStrategyCS(PRSC1,extractSplitCasesT(TE)),TMOD:Module,MS1,INSP1)
-    else
-      --- split by if else condition
-      checkCompCS(PRSC1,
-        chooseStrategyCS(PRSC1,extractIfCondsT(TE)),TMOD:Module,MS1,INSP1)
-    fi .
+--- return the (reduced) term of the effective condition of the transition concerned
+--- (possibly none)
+  op extIndCondition : Module EquationSet OpDecl Term -> TermList .
+  ceq extIndCondition(MOD,
+      ceq QI1[TEL] = TE if CON1 [ATTS1] . EQS2,
+      op QI1 : TL1 -> QI2 [ATTS2] .,
+      QI1[TEL2])
+    = substitute(CON1, SUB)
+    if SUB := metaMatch(MOD, QI1[TEL], QI1[TEL2], nil, 0) /\
+      TEL3 := substitute(CON1, SUB) .
+  eq extIndCondition(MOD, EQS, OP1, TE) = empty [owise] .
+
+  op substitute : EqCondition Substitution -> Term .
+  eq substitute(TE = 'true.Bool, SUB) = substitute(TE, SUB) .
+
+  op substitute : Term Substitution -> Term .
+  op substitute2 : TermList Substitution -> TermList .
+
+  eq substitute(QI[TEL], SUB) = QI[substitute2(TEL, SUB)] .
+  eq substitute2(empty, SUB) = empty .
+  eq substitute2( (V , TEL), ((V <- TE) ; SUB) ) 
+    = ( TE, substitute2(TEL, ((V <- TE) ; SUB)) ) .
+  eq substitute2( (TE , TEL), SUB )
+    = (substitute(TE, SUB) , substitute2(TEL, SUB)) [owise] .
+
+  op findInstTerm : TermList Qid -> Term .
+  ceq findInstTerm(TE, QI1) = TE
+    if QI1[TEL2] := TE .
+  ceq findInstTerm((TE, TEL), QI1) = TE
+    if QI1[TEL2] := TE .
+  eq findInstTerm((TE, TEL), QI1) = findInstTerm(TEL, QI1) [owise] . --- TE is a constant
 
 --- loop split case (split one original fragment -> mutilple fragments)
-  op loopGenPrsc : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
-  ceq loopGenPrsc(PRSC1, MS1, INSP1) =
-  --- true
-  if TE == 'true.Bool then
-      --- addComment2Prsc(PRSC1, getName(TE))
-      handleLeafTrue(PRSC1)
+--- first check if the effective condition is already true or false
+  op loopGenPrsc0 : IPSGProofScore IPSGModuleSpec IPSGInputSpec 
+    TermList EquationSet -> PrscList .
+  eq loopGenPrsc0(PRSC1, MS1, INSP1, empty, EQS) 
+    = loopGenPrsc(PRSC1, MS1, INSP1, empty, EQS) .
+  ceq loopGenPrsc0(PRSC1, MS1, INSP1, TE, EQS) 
+      = loopGenPrsc(PRSC1, MS1, INSP1, TE, EQS) 
+    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
+      (getTerm(metaReduce(MOD, TE)) == 'true.Bool or-else
+      getTerm(metaReduce(MOD, TE)) == 'false.Bool) .
+  ceq loopGenPrsc0(PRSC1, MS1, INSP1, TE, EQS) 
+    = splitCase(PRSC1, MS1, INSP1, TE, MOD, TE3, EQS)
+    if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
+      TE2 := getTerm(metaReduce(MOD, TE)) /\
+      TE2 =/= 'true.Bool /\
+      TE2 =/= 'false.Bool /\
+      TE3 := if extractIfCondsT(TE2) == empty 
+             then chooseStrategyCS(PRSC1, extractSplitCasesT(TE2))
+             else chooseStrategyCS(PRSC1, extractIfCondsT(TE2))
+             fi .
+
+  op loopGenPrsc : IPSGProofScore IPSGModuleSpec IPSGInputSpec 
+    TermList EquationSet -> PrscList .
+  ceq loopGenPrsc(PRSC1, MS1, INSP1, TEL, EQS) =
+    if TE == 'true.Bool 
+    then handleLeafTrue(PRSC1)
     else
-      --- false
-      if TE == 'false.Bool then
-        --- addComment2Prsc(PRSC1, getName(TE))
-        handleLeafFalse(PRSC1, MS1, INSP1)
-      else
-        --- split by term
-        if extractIfCondsT(TE) == empty then
-          loopGenPrscCS(PRSC1,
-            chooseStrategyCS(PRSC1, extractSplitCasesT(TE)),TMOD:Module,MS1,INSP1)
-        else
-          loopGenPrscCS(PRSC1,
-            chooseStrategyCS(PRSC1, extractIfCondsT(TE)),TMOD:Module,MS1,INSP1)
-        fi
+      if TE == 'false.Bool 
+      then handleLeafFalse(PRSC1, MS1, INSP1)
+      else handCaseSplit(PRSC1, MS1, INSP1, TEL, EQS, MOD, TE)
       fi
     fi 
-  if TMOD:Module := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
-    TE := getTerm(metaReduce(TMOD:Module, getPrscMetaReduceCmd(PRSC1))) .
+  if MOD := tempMod2(getPrscModule(PRSC1), MS1, getPrscILemma(PRSC1)) /\ 
+    TE := getTerm(metaReduce(MOD, getPrscMetaReduceCmd(PRSC1))) .
+
+  op handCaseSplit : IPSGProofScore IPSGModuleSpec IPSGInputSpec 
+    TermList EquationSet Module Term -> PrscList .
+  ceq handCaseSplit(PRSC1, MS1, INSP1, TEL, EQS, MOD, TE)
+    = splitCase(PRSC1, MS1, INSP1, TEL, MOD, TE3, EQS) 
+  if TE2 := if extractIfCondsT(TE) == empty 
+            then chooseStrategyCS(PRSC1, extractSplitCasesT(TE))
+            else chooseStrategyCS(PRSC1, extractIfCondsT(TE))
+            fi /\
+    TEL2 := splitCEq(MOD, TE2, EQS) /\
+    TE3 := if TEL2 == empty
+           then TE2
+           else chooseStrategyCS(PRSC1, TEL2)
+           fi .
+
+  op splitCase : IPSGProofScore IPSGModuleSpec IPSGInputSpec TermList 
+    Module Term EquationSet -> PrscList .
+  ceq splitCase(PRSC1, MS1, INSP1, TEL, MOD, TE, EQS) 
+    = loopGenPrsc0(
+        addEquation2Prsc(PRSC1, EQ1,1), MS1, INSP1, TEL, EQS)
+      loopGenPrsc0(
+        addEquation2Prsc(PRSC1, EQ2,2), MS1, INSP1, TEL, EQS) 
+  if $ EQ1 , EQ2 $ := makeEqsTF(TE, MOD, getPrscModule(PRSC1)) .
+
+--- check if there exist a condition equation s.t. there exists 
+--- a substitution between a left hand side of the equation and the given term
+  op splitCEq : Module Term EquationSet -> TermList .
+  ceq splitCEq(MOD, TE, EQS) = extractSplitCasesT(TE5)
+  if ceq TE2 = TE3 if CON1 [ATTS1] . EQS2 := EQS /\
+    SUB := metaMatch(MOD, TE2, TE, nil, 0) /\
+    TE4 := substitute(CON1, SUB) /\
+    RP := metaReduce(MOD, TE4) /\
+    TE5 := getTerm(RP) /\
+    TE5 =/= 'true.Bool /\ 
+    TE5 =/= 'false.Bool .
+  eq splitCEq(MOD, TE, EQS) = empty [owise] .
 
   op chooseStrategyCS : IPSGProofScore TermList -> Term .
-  eq chooseStrategyCS(PRSC1, TEL) =
-    if getEqs(getPrscModule(PRSC1)) == none then
-      headTL(TEL)
-    else
-      chooseTermCS(TEL)
-    fi .
+  eq chooseStrategyCS(PRSC1, TEL) = chooseTermCS(TEL) .
 
   op handleLeafTrue : IPSGProofScore -> IPSGProofScore .
   op handleLeafFalse : IPSGProofScore IPSGModuleSpec IPSGInputSpec -> PrscList .
-  op loopGenPrscCS : IPSGProofScore Term Module IPSGModuleSpec IPSGInputSpec 
-    -> PrscList .
-  op checkCompCS : IPSGProofScore Term Module IPSGModuleSpec IPSGInputSpec 
-    -> PrscList .
-  op checkComp2CS : IPSGProofScore Term Module IPSGModuleSpec IPSGInputSpec 
-    -> PrscList .
-
-  ceq loopGenPrscCS(PRSC1, TE2, TMOD:Module, MS1, INSP1) 
-    = PRSCL1
-      loopGenPrsc(updatePrsc(PRSC1,
-        makeEqF(TE2,TMOD:Module,getPrscModule(PRSC1)),2,ILS),MS1,INSP2)
-  if PRSCL1 := loopGenPrsc(addEquation2Prsc(PRSC1,
-            makeEqT(TE2,TMOD:Module,getPrscModule(PRSC1)),1), MS1, INSP1) /\
-    ILS := getPrscILemma(last(PRSCL1)) /\
-    INSP2 := addLmsInv(INSP1,lms2InvList(getIPSGLms(ILS))) .
-
-  ceq checkCompCS(PRSC1, TE, TMOD:Module, MS1, INSP1) 
-    = PRSCL1
-      checkComplicated(updatePrsc(PRSC1,
-        makeEqF(TE,TMOD:Module,getPrscModule(PRSC1)),2,ILS),MS1,INSP2)
-  if PRSCL1 := checkComplicated(addEquation2Prsc(PRSC1,
-            makeEqT(TE,TMOD:Module,getPrscModule(PRSC1)),1), MS1, INSP1) /\
-    ILS := getPrscILemma(last(PRSCL1)) /\
-    INSP2 := addLmsInv(INSP1,lms2InvList(getIPSGLms(ILS))) .
-
-  ceq checkComp2CS(PRSC1, TE, TMOD:Module, MS1, INSP1) 
-    = PRSCL1
-      checkComplicated2(updatePrsc(PRSC1,
-        makeEqF(TE,TMOD:Module,getPrscModule(PRSC1)),2,ILS),MS1,INSP2)
-  if PRSCL1 := checkComplicated(addEquation2Prsc(PRSC1,
-            makeEqT(TE,TMOD:Module,getPrscModule(PRSC1)),1), MS1, INSP1) /\
-    ILS := getPrscILemma(last(PRSCL1)) /\
-    INSP2 := addLmsInv(INSP1,lms2InvList(getIPSGLms(ILS))) .
 
   eq handleLeafTrue(PRSC1) = addComment2Prsc(PRSC1, 'true) .
+  ceq handleLeafFalse(PRSC1, MS1, INSP1) 
+      = handleFalseCase(PRSC1, MS1, INSP1)
+    if tryToUseLemma [print "--> try to use a lemma..."] .
   eq handleLeafFalse(PRSC1, MS1, INSP1) 
-    = if tryToUseLemma then
-        handleFalseCase(PRSC1, MS1, INSP1)
-      else
-        addComment2Prsc(PRSC1, '\r 'false '\o)
-      fi .
+    = returnFalsePrsc(PRSC1) [owise] .
 endm

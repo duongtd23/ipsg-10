@@ -31,6 +31,7 @@ fmod PARAM-LIST is
   pr CONVERSION .
   
   vars P1 P2 : Param .
+  vars PRL1 PRL2 PRL3 : ParamList .
   var PL : ParamList .
   vars S S1 : String .
   vars Q1 Q2 Q3 Q4 : Qid .
@@ -60,6 +61,24 @@ fmod PARAM-LIST is
       S1
     fi
   if S1 := S + string(N,10) .
+
+  op remove : ParamList Param -> ParamList .
+  op doRemove : ParamList Param ParamList -> ParamList .
+  eq remove(PRL1, P1) = doRemove(PRL1, P1, (nil).ParamList) .
+  eq doRemove((nil).ParamList, P2, PRL2) = PRL2 .
+  eq doRemove(P1 PRL1, P1, PRL2) = PRL2 PRL1 .
+  ceq doRemove(P1 PRL1, P2, PRL2) = doRemove(PRL1, P2, PRL2 P1) 
+    if P1 =/= P2 .
+
+  op findMatches : Param ParamList -> ParamList .
+  op doFindMatches : Param ParamList ParamList -> ParamList .
+  eq findMatches(P1, PRL2) = doFindMatches(P1, PRL2, (nil).ParamList) .
+  eq doFindMatches(P1, (nil).ParamList, PRL1) = PRL1 .
+  eq doFindMatches(P1, P2 PRL2, PRL3) =
+    if getParamType(P1) == getParamType(P2) 
+    then doFindMatches(P1, PRL2, PRL3 P2)
+    else doFindMatches(P1, PRL2, PRL3)
+    fi .
 
 endfm
 
@@ -587,8 +606,8 @@ fmod IPSG-PROOF-SCORE is
   op prsc1 : Module Qid Qid ParamList ParamList Param IPSGModuleSpec 
     IPSGLemmas -> IPSGProofScore .
 
-  op prsc0 : Module QidList Term QidList MapNatEquation Qid ParamList 
-    Qid ParamList -> IPSGProofScore .
+  --- op prsc0 : Module QidList Term QidList MapNatEquation Qid ParamList 
+  ---   Qid ParamList -> IPSGProofScore .
 
   op getPrscModule : IPSGProofScore -> Module .
   op getPrscReductionCmd : IPSGProofScore -> QidList .
@@ -838,7 +857,8 @@ fmod IPSG-PROOF-SCORE-LIST is
       sort List{IPSGProofScore} to PrscList) .
 
   var MOD1 : Module .
-  var QI : Qid .
+  vars QI Q1 : Qid .
+  vars QL : QidList .
   op toQidList2 : PrscList Module -> QidList .
   eq toQidList2((nil).PrscList, MOD1) = (nil).QidList .
   eq toQidList2(PRSC:IPSGProofScore PRSCL:PrscList, MOD1)
@@ -855,6 +875,20 @@ fmod IPSG-PROOF-SCORE-LIST is
   eq toOpenCloseQidList2(QI, PRSC:IPSGProofScore PRSCL:PrscList, MOD1)
     = toOpenCloseQidList(QI, PRSC:IPSGProofScore, MOD1) '\n '\n
     toOpenCloseQidList2(QI, PRSCL:PrscList, MOD1) .
+
+  op toOpenCloseStr : Qid PrscList Module -> String .
+  eq toOpenCloseStr(QI, (nil).PrscList, MOD1) = "" .
+  eq toOpenCloseStr(QI, PRSC:IPSGProofScore PRSCL:PrscList, MOD1)
+    = $toOpenCloseStr(QI, PRSC:IPSGProofScore, MOD1) + "\n\n" + 
+    toOpenCloseStr(QI, PRSCL:PrscList, MOD1) .
+
+  var PRSC : IPSGProofScore .
+  var M1 : Module .
+  op $toOpenCloseStr : Qid IPSGProofScore Module -> String .
+  eq $toOpenCloseStr(QI, PRSC, M1) = 
+    "--> " + qidList2Str(getPrscComment(PRSC)) + "\n" +
+    mod2OpenCloseStr(QI, getPrscModule(PRSC), M1, getPrscMapEqs(PRSC), 
+      "\tred " + qidList2Str(getPrscReductionCmd(PRSC)) + " .") .
 endfm
 
 ***(
@@ -871,5 +905,33 @@ fmod INV-TERMPERMUTATIONSET-MAP is
   protecting MAP{Invariant, TermPernSet} *
     (sort Map{Invariant, TermPernSet} to MapInvTermPernSet,
       sort Entry{Invariant, TermPernSet} to EntryInvTermPernSet) .
+endfm
 
+view TermSet from TRIV to TERM-SET is
+  sort Elt to TermSet .
+endv
+
+fmod PARAM2TERMSET-MAP is
+  pr MAP{Param, TermSet} * 
+    (sort Map{Param, TermSet} to MapParamTS, 
+      sort Entry{Param, TermSet} to EntryParamTS) .
+endfm
+
+fmod TUPLE-TERM-PERMUTATION-SET is
+  pr TERM-PERMUTATION-SET .
+  sort TupleTermPernSet .
+
+--- 1st set: set of termlists, where all terms are fresh constants of sone inv
+--- 2nd set: set of termlists, all possible terms (do not overlap with 1st set)
+  op |_,_| : TermPernSet TermPernSet -> TupleTermPernSet .
+endfm
+
+view TupleTermPernSet from TRIV to TUPLE-TERM-PERMUTATION-SET is 
+  sort Elt to TupleTermPernSet .
+endv
+
+fmod INV-TUPLETERMPERNSET-MAP is
+  protecting MAP{Invariant, TupleTermPernSet} *
+    (sort Map{Invariant, TupleTermPernSet} to MapInvTTermPernSet,
+      sort Entry{Invariant, TupleTermPernSet} to EntryInvTTermPernSet) .
 endfm
