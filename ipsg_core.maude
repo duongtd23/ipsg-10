@@ -4,8 +4,6 @@
 )
 
 in ipsg_lms_handling.maude
---- temp, should be enable if test only Maude code in this file
---- set print attribute on .
 
 ***(
   principle sort CheckResult, which is used in some other modules,

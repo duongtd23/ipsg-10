@@ -173,7 +173,6 @@ mod! KEY-EXCHANGE {
   pr(MASTER-SECRET + PRIVATE-KEY + PUBLIC-KEY)
 
   [Key]
-  -- [PubKey PriKey PubKeyEx PriKeyEx Pms Ms < Key]
 
   vars A B : Prin
   vars K K2 : PriKeyEx
@@ -247,42 +246,23 @@ mod! ENCRYPTION {
   vars CERT CERT' : Cert 
   vars FVD FVD' FVD2 : FinVD
 
-  -- op h1 : Rand Rand PubKeyEx -> Hash
   op hFin : Prin Prin Rand CipherSuites
     Rand CipherSuite Sid
     Cert
     PubKeyEx Cipher
     PubKeyEx -> Hash
-  -- op hCFin : Prin Prin Rand CipherSuites
-  --   Rand CipherSuite Sid
-  --   Cert
-  --   PubKeyEx Cipher
-  --   PubKeyEx -> Hash
   op hFin2 : Prin Prin Rand Sid CipherSuites
     Rand CipherSuite -> Hash
-  -- op hCFin2 : Prin Prin Rand Sid CipherSuites
-    -- Rand CipherSuite -> Hash
 
-  -- eq (h1(R,R2,PK) = h1(R',R2',PK')) 
-    -- = (R = R' and R2 = R2' and PK = PK') .
   eq (hFin(A,B,R,CSs,R2,CS,I,CERT,PK,CI,PK2) =
       hFin(A',B',R',CSs',R2',CS',I',CERT',PK',CI',PK2')) =
     (A = A' and B = B' and R = R' and CSs = CSs' and R2 = R2' and
      CS = CS' and I = I' and CERT = CERT' and PK = PK' and
      CI = CI' and PK2 = PK2') . 
-  -- eq (hCFin(A,B,R,CSs,R2,CS,I,CERT,PK,CI,PK2) =
-  --     hCFin(A',B',R',CSs',R2',CS',I',CERT',PK',CI',PK2')) =
-  --   (A = A' and B = B' and R = R' and CSs = CSs' and R2 = R2' and
-  --    CS = CS' and I = I' and CERT = CERT' and PK = PK' and
-  --    CI = CI' and PK2 = PK2') . 
   eq (hFin2(A,B,R,I,CSs,R2,CS) =
       hFin2(A',B',R',I',CSs',R2',CS')) =
     (A = A' and B = B' and R = R' and CSs = CSs' and 
      R2 = R2' and CS = CS' and I = I') . 
-  -- eq (hCFin2(A,B,R,I,CSs,R2,CS) =
-  --     hCFin2(A',B',R',I',CSs',R2',CS')) =
-  --   (A = A' and B = B' and R = R' and CSs = CSs' and 
-  --    R2 = R2' and CS = CS' and I = I') .
 
 -- server signs the key exchange params
   op encParams : PriKey Rand Rand PubKeyEx -> Cipher
@@ -801,8 +781,6 @@ mod! SESSION-STATE {
   op st : CipherSuite Pms -> Session {constr}
   
   op cs : Session -> CipherSuite
-  -- op crand  : Session -> Rand
-  -- op srand  : Session -> Rand
   op pms : Session -> Pms
 
   var S : Session 
@@ -810,8 +788,6 @@ mod! SESSION-STATE {
   vars PMS PMS1 PMS2 : Pms
 
   eq cs(st(CS,PMS)) = CS .
-  -- eq crand(st(C,CR,SR,PMS)) = CR .
-  -- eq srand(st(C,CR,SR,PMS)) = SR .
   eq pms(st(CS,PMS)) = PMS .
 
   eq (st(CS,PMS) = st(CS1,PMS1))
@@ -927,7 +903,7 @@ mod TLS12 {
   op c-shello : Sys Rand CipherSuite Sid
     Prin Prin Prin Rand CipherSuites -> Bool
   eq c-shello(S,R2,CS,I,A2,A,B,R,CSs) = 
-    (not(R2 \in ur(S) and I \in ui(S)) and   
+    (not(R2 \in ur(S) or I \in ui(S)) and   
      chM(A2,A,B,R,CSs) \in nw(S) and
      CS \in CSs) .
   ceq nw(shello(S,R2,CS,I,A2,A,B,R,CSs)) = 
