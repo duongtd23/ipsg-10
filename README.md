@@ -1,8 +1,8 @@
 ## IPSG
 
-Formal verification TLS 1.2 with IPSG.
+IPSG: Invariant Proof Score Generation.
 
-The tool requires Maude alpha tool, which can be found here https://github.com/SRI-CSL/Maude.
+The tool requires Maude version not lower than Maude 3.2
 
 ### How to run:
 
@@ -11,5 +11,5 @@ The tool requires Maude alpha tool, which can be found here https://github.com/S
 ```
 After the tool started, for example, we can use the following command:
 ```
-    $ load tls12/input2+3.cafe .
+    $ load tas/input.cafe .
 ```
