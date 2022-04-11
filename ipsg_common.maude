@@ -901,7 +901,6 @@ view TermPernSet from TRIV to TERM-PERMUTATION-SET is
 endv
 
 fmod INV-TERMPERMUTATIONSET-MAP is
-  --- pr META-LEVEL .
   protecting MAP{Invariant, TermPernSet} *
     (sort Map{Invariant, TermPernSet} to MapInvTermPernSet,
       sort Entry{Invariant, TermPernSet} to EntryInvTermPernSet) .
